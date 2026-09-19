@@ -43,6 +43,7 @@ Usage::
 from __future__ import annotations
 
 import logging
+import os
 import time
 from typing import Any, Dict, List, Optional
 
@@ -245,6 +246,14 @@ class SportsScrollDisplay:
         # keeps ownership of reading its own config -- _get_scroll_settings
         # merges the league overrides -- and hands the resolver a plain px/s.
         pixels_per_second = self._resolve_pixels_per_second(settings)
+        # Emulator/fallback display managers have no matrix and therefore no
+        # SwapOnVSync to honor frame_hold. Use elapsed-time pacing there;
+        # fixed whole-pixel steps would otherwise advance once per fast loop
+        # iteration and ignore the configured pixels-per-second speed.
+        use_crisp_steps = (
+            getattr(self.display_manager, "matrix", None) is not None
+            and os.getenv("EMULATOR", "false").lower() != "true"
+        )
 
         resolved = scroll_config.configure(
             self.scroll_helper,
@@ -254,6 +263,7 @@ class SportsScrollDisplay:
             display_manager=self.display_manager,
             plugin_logger=self.logger,
             refresh_hz=self._resolve_refresh_hz(),
+            snap_to_crisp=use_crisp_steps,
         )
         self._scroll_settings = resolved
         self.logger.info(

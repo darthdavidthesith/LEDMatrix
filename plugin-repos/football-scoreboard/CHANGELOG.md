@@ -1,0 +1,869 @@
+# Changelog
+
+## [3.10.4] - 2026-09-16
+
+### Changed
+- **Requires LEDMatrix core 3.4.0.** `get_update_interval()`, which this plugin
+  has implemented since #479, is only consulted from core 3.4.0
+  (ChuckBuilds/LEDMatrix#555); on 3.3.x live polling silently stayed at the
+  manifest's 60s.
+- **`scroll_settings.scroll_delay` is documented as ignored.** It never affected
+  scrolling (frames are paced to the panel refresh and `scroll_speed` sets the
+  speed) but was described as a smoothness knob. The key stays declared so saved
+  configs keep loading.
+
+### Fixed
+- **Scroll mode no longer freezes while a fetch runs.** The per-frame live
+  refresh ran `manager.update()` on the render thread, so when a fetch was due
+  the marquee stalled for the whole ESPN request. It is handed to a worker
+  thread (one per manager at a time, at least 5s apart; the manager's own
+  interval still decides whether anything is fetched).
+- **Switch mode refreshes its managers off the render thread.** The draw-time
+  refresh in `_try_manager_display()` ran inline, freezing the panel for each
+  due fetch; it now uses the same worker dispatch as afl/nrl/soccer.
+
+## [3.10.3] - 2026-09-16
+
+### Fixed
+- **Scores and schedules load again after ESPN stopped accepting date
+  ranges.** Since 2026-09-15 ESPN answers `dates=YYYYMMDD-YYYYMMDD` scoreboard
+  queries with `400 Bad Request` for every sport. Today's games, the
+  lookback/lookahead window and the season schedule are all ranges, so the
+  NFL and NCAA football boards logged `400 Client Error` and showed nothing. A rejected
+  range is now fetched by `fetch_espn_scoreboard` (`football_espn_dates.py`, a
+  copy of LEDMatrix core's `src/common/espn_dates.py`) as whole months plus the
+  days at either end, which cover the window exactly: a season is 8 to 12
+  requests. A month that comes back at ESPN's 500-event cap is re-fetched day by
+  day, and after one rejection ranges go straight to chunks for 6 hours.
+- **`limit=1000` silently truncated results.** Above 500 ESPN returns a short
+  list with no error (college football: 25 of 68 games for one Saturday).
+  Scoreboard requests now send at most 500.
+- **Older cores.** A core whose background service cannot fetch ranges (before
+  ChuckBuilds/LEDMatrix#591 added `handles_espn_date_ranges`) would send the
+  season range to ESPN as-is, so the plugin fetches the season itself during
+  `update()` instead. `SportsCore._get_weeks_data` is carried here for the same
+  reason.
+
+## [3.10.2] - 2026-09-15
+
+### Removed
+- **Unused `get_dynamic_duration_floor()`.** It was a second copy of the
+  dynamic-duration floor lookup that read only the league on screen. Nothing
+  called it; `get_cycle_duration` uses `_get_duration_floor_for_mode` (the
+  highest floor across enabled leagues), which is unchanged. No behaviour
+  change. `test_duration_floor_single_source.py` pins the floors.
+
+## [3.10.1] - 2026-09-14
+
+### Fixed
+- **A null period no longer stops live games updating.** The live check that
+  drops games which look finished compared `game.get("period", 0) >= 4`; that
+  default only covers a missing key, so a scheduled game whose ESPN `status.period`
+  was null raised `TypeError` (a `None` period text likewise raised
+  `AttributeError`). `SportsLive.update()` does not catch it, so that league's
+  whole live refresh was abandoned: live games already on the panel kept their
+  last scores, new ones never appeared, and the error repeated on every poll
+  while that game stayed in the feed. A null or non-numeric period now
+  counts as 0 and a null or non-string period text as empty; thresholds and
+  clock handling are unchanged. ESPN normally sends an integer, so this takes a
+  malformed feed.
+
+## [3.10.0] - 2026-09-14
+
+### Fixed
+- **Adaptive scorebug draws odds, records and rankings.** The renderer was
+  built from the manager-shaped config, where those options live under
+  `nfl_scoreboard`, and found none of them.
+- **Adaptive scorebug follows the full-screen settings.** It read the scroll
+  card's `upcoming_center`, `show_date`, `show_time` and `date_format`; it now
+  reads the `switch_*` keys like the classic scorebug.
+- **Celebration score stays on the panel** at 48px and 64px height, placed from
+  the measured ink instead of `display_height - 14`.
+- **`ncaa_fb_*` modes use NCAA FB's own mode duration** (the mode name was
+  split on the first underscore).
+- **Postponed, cancelled and suspended games are not "Final 0-0".**
+- **Full-screen odds no longer overprint** "Final", the clock or "Next Game":
+  the O/U anchors left and the row steps down when it would overlap. A 0.0 home
+  spread is a pick'em, and a non-numeric spread no longer drops the O/U.
+- **"Logo Error" shows** instead of a black panel when logos fail to load.
+- **A cached no-odds marker is a cache hit**, not a fresh ESPN request.
+- **One league failing to initialise no longer blanks the other.**
+- **Vegas content rebuilds when the games change**, reads its own `mixed`
+  display, and never calls `update()` (network) on the render path.
+- **Decoded logo caches are bounded** LRUs (port of core #559).
+- **Failed logo downloads are retried**: logos now come from the core
+  `src.logo_downloader`, whose placeholders carry the refresh marker.
+- Adaptive odds text uses `%g` ("-7", not "-7.0"); unranked teams show their
+  record when rankings and records are both on; the classic live score uses
+  the #338 centring; `get_info` reports the manifest version.
+- `_clamp_window` tolerates a config `Infinity`.
+
+### Added
+- `odds_update_interval` and `live_odds_update_interval` (advanced, per league)
+  are declared in the schema and forwarded to the managers.
+
+### Changed
+- The core floor stays at 3.3.0. `sports.py` imports `src.common.sports_shared`,
+  which first shipped in core v3.3.1, but that release still reports
+  `__version__ = "3.3.0"`, so a 3.3.1 floor would refuse every current core.
+- DYNAMIC_DURATION.md and the `layout_mode` / `switch_upcoming_center` schema
+  text now describe what the code actually does.
+
+## [3.9.0] - 2026-09-14
+
+### Added
+- **Favorite games get extra turns in switch mode.** New game-limit setting
+  `favorite_rotation_boost` (1-5, default 1): a favorite team's recent or
+  upcoming card gets that many turns per rotation for every one turn other
+  cards get, its extra turns spread evenly around the loop and kept apart
+  whenever enough other cards remain to separate them. Previously only live
+  games could weight favorites.
+
+  Existing configs are unaffected: at the default of 1 every card is shown
+  once per rotation, in the same order as before.
+
+## [3.8.0] - 2026-09-11
+
+### Added
+- **Style each card separately.** Font, size, colour and position for the
+  score, clock, team abbreviation, status, detail, odds and ranking can now
+  differ between the live, upcoming and recent cards. Set them under
+  "Per-Mode Overrides" in the plugin's settings; anything left blank follows
+  the settings above it, so a single change applies to one card and leaves
+  the others alone.
+
+  Existing configs are unaffected: with no per-mode overrides set, every card
+  renders exactly as before -- verified against the golden images at all
+  eight panel sizes.
+
+## [3.7.2] - 2026-09-11
+
+### Fixed
+- **Live score updates now actually reach the scrolling strip.**
+  1.41.0 added the rebuild-on-change machinery but wired it in the wrong order,
+  which left it inert: the rebuild decision is computed by fingerprinting the
+  live managers' cached games, and the only call that refreshed those managers
+  (_ensure_manager_updated) sat INSIDE the block that decision gates. So once
+  the first strip was built nothing refreshed the data, the fingerprint could
+  never change, and the block never ran again -- the same frozen-until-restart
+  symptom the previous release set out to fix. Switch mode was never affected
+  because _try_manager_display() refreshes unconditionally on every pass; scroll
+  mode now gets the same guarantee, refreshing the live managers before it
+  fingerprints them. _ensure_manager_updated() is itself interval-guarded, so on
+  frames where no refresh is due this costs two getattrs and a comparison.
+  Ported across all eight scoreboards in one change, per CLAUDE.md non-
+  negotiable #7, and pinned by a test that asserts the ordering structurally --
+  reversing the two lines leaves every behavioural test passing while the panel
+  silently freezes.
+
+## [3.7.1] - 2026-09-10
+
+### Fixed
+- **Live games now reach the scrolling strip mid-cycle.**
+  The strip was rendered once per scroll cycle and _scroll_prepared was cleared
+  only when the cycle completed, so a score changed while the marquee was
+  running stayed frozen in the pixels until it finished -- minutes, for a long
+  game list. Restarting the display forced a rebuild, which is the workaround
+  users were finding. The strip is now rebuilt when anything the card draws
+  changes, keeping scroll_position and total_distance_scrolled so the marquee
+  does not snap back to the start and the cycle still completes on schedule. The
+  game clock deliberately does not trigger a rebuild -- it ticks every second
+  and re-rendering every card that often is the whole frame budget on a Pi --
+  and rebuilds are floored at 5s so a large slate cannot thrash. Ported across
+  all eight scoreboards in one change, per CLAUDE.md non-negotiable #7. Corrects
+  the first cut of this fix, which keyed on an allowlist that omitted down-and-
+  distance, possession, the red-zone colour, timeouts and the scoring banner,
+  and which counted the 'league'/'status' keys the display pipeline adds in
+  place -- making every update look like a change. Rebuild frequency is self-
+  limiting: the floor between rebuilds scales with what the last one actually
+  cost, so the marquee never spends more than about 5% of its time frozen re-
+  rendering. Measured on a Pi 4, a strip rebuild takes 29ms for one game and
+  463ms for fifteen; a fixed floor would have been fine for the first and wrong
+  for the second. Also fixes the rebuild-cost bookkeeping being keyed
+  differently from where it is read, which left the duty-cycle cap inert in most
+  plugins.
+
+## [3.7.0] - 2026-09-10
+
+### Fixed
+- **Scroll mode now picks up a live score mid-cycle.**
+  The rendered strip was built once per scroll cycle and _scroll_prepared was
+  cleared only when the cycle completed, so a touchdown scored while the marquee
+  was running stayed frozen in the pixels until it finished -- minutes, for a
+  long game list. Restarting the display forced a rebuild, which is the
+  workaround the reporter found. The strip is now rebuilt when a score, period
+  or halftime/final flag changes, keeping scroll_position and
+  total_distance_scrolled so the marquee does not snap back to the start and the
+  cycle still completes on schedule. The game clock deliberately does not
+  trigger a rebuild: it ticks every second and re-rendering every card 60 times
+  a minute to move two glyphs is the whole frame budget on a Pi.
+
+## [3.6.0] - 2026-09-10
+
+### Fixed
+- **Live games refresh at live_update_interval again instead of once a minute.**
+  The core scheduler only ever read the manifest's static update_interval (60s),
+  so the plugin's live_update_interval could never fire more often than that --
+  measured on a live rig during an NFL fourth quarter, ESPN was polled at
+  23:21:49, 23:22:50, 23:23:50, 23:24:50, exactly 60s apart, while the setting
+  asked for 15. A clock up to a minute stale during a two-minute drill reads as
+  a frozen panel. The new get_update_interval() hook reports the live interval
+  while a game is in progress and nothing when idle, so out-of-season polling is
+  unchanged. Needs the core-side hook; older cores ignore the method and behave
+  exactly as before.
+## [3.5.5] - 2026-09-11
+
+### Fixed
+- **Placeholder team logos draw their abbreviation at PressStart2P 16, not 12.**
+  That face is crisp only at multiples of 8; 12 was anti-aliased, and 16 is the
+  nearest crisp size for the 64px logo tile. Panel text was already on-grid via
+  `_FONT_PIXEL_GRID` and is unchanged.
+
+## [3.0.0] - 2026-08-31
+
+### Changed
+- **`ranked` now means ranked in the top division's poll.** ESPN answers the college football rankings endpoint with four polls — AP Top 25, the AFCA Coaches Poll, the FCS Coaches Poll and the AFCA Division II Poll — and the parser took whichever it listed first. That is AP today, so the table was FBS by luck rather than by choice: nothing in the payload promises the order, and ESPN demonstrably changes it, adding the CFP rankings in November. With a lower-division poll leading, every top FCS side reads as ranked and a board asking for the week's best matchups is served South Dakota State at Northwestern — the ranked side is FCS, the FBS side is unranked, and it is exactly the game the setting exists to keep off the panel. The poll is now chosen rather than trusted: ESPN's own order is kept among top-division polls, and the ones below FBS are stepped over. Verified against the live payload with the FCS poll moved to the front — AP is still the table, and South Dakota State is still unranked.
+- **Teams are matched by id, not just abbreviation.** The FBS and FCS schedules arrive in one scoreboard payload and an abbreviation is not unique across divisions — ESPN has SDSU for San Diego State and SDST for South Dakota State today, with nothing promising it stays that way — so two schools sharing one could promote each other into a ranked slot. The rank badge reads the same table, so it can no longer draw an FCS poll position on an FBS board.
+- **`AP_TOP_25` and friends resolve from the same top-division poll.** `DynamicTeamResolver._fetch_rankings` took `data['rankings'][0]` — the same "usually AP" assumption, in a second place. The consequence there is worse: a lower-division poll leading makes `AP_TOP_25` resolve to 25 FCS schools and installs them as *favourite* teams, and favourites are never filtered by quality or division, so every one of those games reaches the panel. The resolver is copied into four plugins and all four are fixed together; `scripts/test_dynamic_poll_choice.py` holds them to it, checking behaviour rather than reading the source.
+- **The poll vocabulary now excludes tournament seedings too.** Shared with the sibling lineages, where it matters live: ESPN fronts men's and women's college hockey with *NCAA Tournament Seedings*, so their badge drew a 16-team bracket seed. College football publishes no seedings block, so this is hardening here — it keeps all nine `sports.py` copies identical, which `scripts/test_poll_choice.py` now enforces.
+- **An unusable `other_games_min_quality` falls back to `ranked` with a warning.** It used to fall through every branch of the filter and silently mean `any`: a quality bar the board believes it has and does not.
+
+### Fixed
+- **Dynamic duration sizes a recent or upcoming cycle from the games actually on the board.** `get_cycle_duration` asked the manager for `recent_games`/`upcoming_games` — lists `SportsRecent` and `SportsUpcoming` declared in `__init__` and never filled, since the selected games go to `games_list`. So `total_games` was always 0 and every cycle fell through to the "no games yet" default of three games' worth instead of scaling with the number of cards. Live mode reads `live_games`, which *is* populated, which is part of why it went unnoticed. It now uses `_get_games_from_manager` — the resolution the scroll path already used, and the one `afl` and `nrl` already called here. The two dead attributes are removed across every lineage, and `scripts/test_cycle_duration_counts_real_games.py` holds all 13 copies of the function to it.
+
+### Removed
+- **The `broadcast` quality tier.** Measured against a real Week 1 and Week 2 college slate it passed **174 of 175** games — ESPN lists a broadcaster for nearly everything now, ESPN+ included — so it read as a quality bar in the dropdown and behaved as `any`. Boards still holding it are read as `ranked` and say so once in the log; changing the setting clears the schema warning the core raises for a value no longer in the enum.
+## [2.29.4] - 2026-08-31
+
+### Fixed
+- **A mode retaking the panel gives its current card a full turn.** The dwell clock (`last_game_switch`) kept running while a mode was off screen, so on re-entry it was always long expired and the first `display()` call advanced immediately: the card cut off by the end of the previous block was skipped instead of shown — measured live at one in five card transitions on a 30s block of 15s cards, each preceded by a one-frame flash of the card that then vanished. After a service restart the clock started at manager construction, seconds before the first frame, producing a 9s card and a 5s card in the first block. Any multi-second gap between `display()` calls now restarts the dwell for the current card, on the upcoming, recent and live screens alike; the one-frame card at a block boundary becomes the card that opens the next block with a full turn. The live screen's `last_game_switch == 0` "no game yet" sentinel is left untouched.
+- **`schedule_lookahead_days` is enforced at selection, not just in the ranged fetch.** Selection reads the season-wide background cache, so every fixture ESPN had published was eligible: with no NFL football inside a 7-day window, a live board filled with games up to four weeks out (MIN@TB, 27 days ahead) while the config's own description promised "a fixture just beyond this horizon ... never reaches the board" and the favourite-check advisory claimed the empty screen was expected. The cutoff now mirrors the lookback cutoff on the Recent screen, favourites included — it is a window, not a filter. A board that should show nothing inside its window now genuinely shows nothing; raise `schedule_lookahead_days` to see further ahead.
+- **The "nothing on until" advisory reports a game date, not a calendar boundary.** `_schedule_note` pooled ESPN's rolled-forward event dates with the league calendar's week/phase `startDate`s and took the earliest; calendar weeks routinely open days before their first game, so it said "nothing on until 06 September" for a league whose first snap is the 10th. Events now win; the calendar only speaks when the scoreboard has no events at all.
+- **A whole-number line no longer renders as "-7.0".** ESPN sends spreads as floats, so a 7-point line drew as "-7.0" beside cards saying "-3.5" and "-46.5". Whole numbers drop the ".0", spread and over/under alike; halves keep their .5.
+
+## [2.29.3] - 2026-08-31
+
+### Fixed
+- **Recent games now get their odds too.** SportsUpcoming fetches odds for the games that survive selection, and SportsLive fetches them per included game — the Recent screen never fetched them at all. A final only showed a line when the other-games rotation happened to swap it in (2.29.2 fetches odds for each fresh slice), and a league whose recent pool fits inside its limits never rotates: its finals stayed bare while a busier league's rotated cards drew theirs. Observed live with both leagues' `show_odds` on: NFL's eight recents rotated and showed closing lines, NCAA's lone final never did. Recent's `update()` now fetches odds for the selected finals, exactly as Upcoming does; ESPN keeps a completed game's closing line on the same endpoint, so a final is as answerable as an upcoming game.
+
+## [2.29.2] - 2026-08-30
+
+### Fixed
+- **Rotated-in games now get their odds.** Odds are fetched in `update()`, which for an upcoming list runs hourly, while the other-games rotation re-cuts the non-favourite slice every `other_rotation_interval_seconds` on the display path — deliberately with no network work. Every slice cut between updates therefore rendered without a line even though ESPN had one, while the favourites, which survive every cut, kept the odds `update()` gave them. Observed live on a college slate: the hourly cycle fetched odds for the five games selected at that moment while the panel rotated through a different five with nothing under the matchup. The rotation now hands the freshly swapped-in games to a background daemon thread that asks the odds manager about each one — bounded by the slice, never the pool, so a college league's hundreds of upcoming games are still never trawled — and the line appears on the card as soon as its fetch lands. Cached per game, so a game re-entering the window inside the odds TTL costs a lookup rather than a request.
+
+## [2.29.1] - 2026-08-30
+
+### Fixed
+- **The full-screen upcoming scoreboard draws its date and time again on configs that had hidden them on the scroll card.** `show_date`/`show_time` predate the full-screen display reading the `scroll_card` block: they governed only the scroll and Vegas cards, so turning them off there never touched the stacked date and time in the middle of the switch-mode scorebug — until the block was wired through, when those old settings started silently blanking it. The middle then drew nothing at all: `switch_upcoming_center` defaults to `date_time`, and both of its lines came back empty. The full-screen display now has its own `switch_show_date` and `switch_show_time`, both defaulting to `true`, holding it to what it has always drawn — the same back-compat rule that gave it `switch_upcoming_center` and `switch_date_format`. The scroll and Vegas cards keep following `show_date`/`show_time` exactly as before, and a regression test pins that the shared keys no longer reach this display.
+
+## [2.29.0] - 2026-08-29
+
+### Changed
+- **The score is now the headline it was always meant to be.** It was the only element on the card not sized from the panel, and it was not even bigger than its neighbours: PressStart2P renders crisply on an 8px grid, so the 10px default snapped to 8 — the same 8 the clock above it and the game date below it are drawn at. It is now sized from `display_height`, snapped to its face's pixel grid and capped at twice its design size, with the clock/date face held a grid step below it.
+- **A narrower face instead of smaller logos.** Where the grown score would swamp the panel the layout reaches for a narrower *face*, which is what `football-scoreboard` has always done via `_fit_score_font` and the single reason its logos read larger than every other scoreboard's at the same panel size. Measured on 128x64: `4x6-font` at 14px reserves 28px and leaves 52x52 logos, where `PressStart2P` at 16px reserved 60px and left 36x36. The two faces are not the same shape — PressStart2P is square, 4x6-font is nearly as tall and about half as wide — so the score keeps the dimension that carries legibility and gives back the one the logos need.
+- **Logos are sized against the space the score actually needs**, and only where the score grew. A panel whose score did not move keeps exactly the logos it had.
+- **Score and date positions scale with their faces.** The bottom-anchored score's `-14`, the centred score's `-3`, and the date's 7px drop were all chosen for an 8px face and clipped a grown one off the card.
+- **The upcoming screen is untouched at every size.** It draws no score — `fonts["score"]` appears in `SportsUpcoming` zero times, `fonts["time"]` five times — so none of the score-driven sizing applies to it and its date and time keep the face and size they always had. Measured on the live and recent screens: 64x32, 128x32 and 256x32 are byte-identical to the previous release; every taller panel gains a larger score with logos the score is no longer drawn across.
+- The adaptive layout reaches the same rung: fit_text_proportional takes the largest rung at or below its target, and 8 * (48/32) = 12 fell just short of 16, so a 48-tall card got the same 8px score a 32-tall one did. _fit_element now snaps the score's target to the face's grid first, so both layouts pick the same size on the same panel. The snap is opt-in per call rather than keyed on the font name: the score font also draws the `VS` separator and the stacked date/time on an upcoming card, and those are not scores — they keep the size they always had.
+
+## [2.11.0] - 2026-08-04
+
+### Changed
+- **Scroll display now runs on the core's shared implementation.** The orchestration half of `scroll_display.py` — scroll-helper configuration, frame pumping, completion, settings resolution, and native `global_config['target_fps']` support — moves to the core's `src.common.sports_scroll` (LEDMatrix 3.2.0). Only the football-specific content half stays here: game cards and league separator icons. A fix to the shared behaviour now lands once in the core instead of being replicated across nine scoreboards.
+- **Nothing changes on an older core.** The import is guarded: a core without `src.common.sports_scroll` falls back to `scroll_display_legacy.py`, the previous self-contained implementation, and the plugin behaves exactly as it did. This is why the minimum core version is unchanged at 2.0.0 — the plugin does not *require* 3.2.0, it merely prefers it. The fallback goes away in a later release, and the floor rises then.
+- Verified byte-for-byte: all 16 safety-harness renders (8 panel sizes × 2 screens) are identical to 2.10.1, before and after.
+
+## [2.10.1] - 2026-08-03
+
+### Fixed
+- **Live games will no longer flood the log**: `has_live_content()` is called from the display path — once per *frame* in Vegas mode — and it emitted a per-league INFO line for NFL and NCAA FB on every call where that league had any live game. Those two lines had no throttle at all; only the final summary did, and that one skipped the throttle whenever the answer was True ("always log True immediately"), which is harmless for an occasional caller and ruinous for a per-frame one. The identical defect was measured on the sibling baseball plugin at **13,871 lines a minute, 98% of the entire journal**, on a 512x64 device with nine live games; football was quiet only because this is the off-season, and would have started spamming the moment the season began. The two per-league lines are now folded into the single summary, which carries the same counts, and that summary is logged when the answer *changes* — a game starting or ending, a league flipping — then at most once a minute while it holds.
+## [2.10.0] - 2026-08-02
+
+### Fixed
+- Explain an empty screen instead of leaving the user guessing. A favorite team code that is not a real ESPN abbreviation matched no game and showed nothing, and so did a correct code before its season started - the two were indistinguishable from the logs. The plugin now says which it is, suggests the right code for a near miss (GBP -> GB), and reports when the league's next games are. The check runs in the background, once per league, and cannot affect what is displayed.
+
+## [2.9.3] - 2026-08-02
+
+### Fixed
+- **Leftover `"timezone": "UTC"` no longer has to be removed by hand**: the write-back bug in versions before 2.9.0 persisted `"timezone": "UTC"` into the saved plugin config, where it then shadowed the real global timezone — so users who updated to 2.9.0 still saw UTC until they edited the config. That stale value is now detected and ignored automatically whenever the global or system timezone disagrees, with a warning naming what it used instead. `Etc/UTC` is the unambiguous way to ask for UTC on purpose and is always honored.
+- **The core's own `"UTC"` default no longer masks a missing global setting**: `ConfigManager.get_timezone()` is `self.config.get('timezone', 'UTC')`, so it returns `"UTC"` for a config with no `timezone` key at all. 2.9.0 took that at face value and therefore never reached the host system zone. Resolution now reads the raw config dict and treats an absent key as absent.
+
+## [2.9.1] - 2026-07-29
+
+### Fixed
+- Correct the NCAA football example team codes in the favorite-teams help text: Alabama is ALA in ESPN's data, not BAMA. Copying the old example matched no team and showed nothing.
+
+## [2.9.0] - 2026-07-29
+
+### Fixed
+- **Game start times shown in UTC**: The plugin read the LEDMatrix global timezone only from `cache_manager.config_manager`. On cores that hang `config_manager` off the plugin manager instead, that lookup came back empty and every start time was rendered in UTC, while plugins that check the plugin manager first (clock-simple, geochron) showed the correct local time on the same device. Timezone resolution now lives in `football_timezone.py`, shared by the scorebug and the plugin manager, and tries, in order: the plugin's own `timezone` setting, `plugin_manager.config_manager`, `cache_manager.config_manager`, the host system zone (`TZ`, `/etc/timezone`, `/etc/localtime`), and only then UTC.
+- **`timezone` setting was silently discarded**: The key was never declared in `config_schema.json`, which sets `additionalProperties: false`, so hand-editing it in the saved config had no effect. It is now a documented string property under Advanced Settings.
+- **Plugin no longer writes a timezone back into your config**: `on_config_change` used to assign `self.config["timezone"]`, mutating the dict the core handed it and persisting a stale `"timezone": "UTC"` into the saved plugin config, which then shadowed the real global timezone.
+
+### Added
+- `timezone` (Advanced Settings): optional IANA zone override, e.g. `America/Chicago`. Blank (the default) follows the LEDMatrix global timezone.
+
+## [2.8.1] - 2026-07-10
+
+### Fixed
+- **Adaptive layout (beta): blurry text on small panels.** Two of the ladder rungs
+  used for score/status/detail text rendered with visible antialiasing:
+  `press_start@10px`/`@12px` (PressStart2P only rasterizes crisply at exact
+  multiples of its 8px design grid) and `5by7.regular` (never crisp at any
+  size tested, in this or any other font's PIL rendering). Both dropped;
+  `4x6-font` corrected from 6px (33% antialiased) to 7px (its actual crisp
+  size). Every rung is now verified with `measure_font_crispness()` at 0%
+  antialiasing, with a regression test guarding it.
+- **Adaptive layout (beta): score text could overlap the team logos on
+  larger panels.** Score/status/detail text was sized to the largest crisp
+  font that fit its own region — on a big panel that region has generous
+  room, so the score could balloon large enough to visually overlap/obscure
+  the logos next to it (which scale by a fixed geometry factor instead).
+  Text now sizes proportionally to the panel's scale factor relative to the
+  classic fixed size for that element (score=10px, status=8px, detail=6px)
+  via the new core `LayoutContext.fit_text_proportional()`, matching
+  classic's visual balance at every size while still being crisp and
+  larger than classic's fixed size.
+
+## [2.8.0] - 2026-07-10
+
+### Added
+- **Adaptive layout (beta, opt-in)**: set `"layout_mode": "adaptive"` to scale
+  fonts, logos, and element regions to the panel size — score/status/detail
+  text grows on large panels (e.g. 32px score on a 256x128) instead of staying
+  at the fixed classic sizes, and layouts degrade gracefully on small panels.
+  Built on the LEDMatrix core adaptive layout system (`src/adaptive_layout.py`);
+  on older cores the plugin silently keeps the classic layout.
+  - **Default is `"classic"`** — rendering is byte-identical to 2.7.0 unless
+    you opt in (verified by the committed golden images).
+  - **Your customization still applies in adaptive mode**: explicitly
+    configured `customization.<element>.font`/`font_size` win over the
+    adaptive sizing, and `customization.layout.<element>` x/y offsets
+    translate elements from their computed positions. Note: adaptive mode
+    applies layout offsets in scroll mode too (classic scroll never did).
+  - **To revert**: set `"layout_mode": "classic"` in the plugin config — no
+    reinstall needed. (Or roll back to 2.7.0 in the plugin store.)
+- Manifest now declares `display.design_size` (128x32), enabling the harness
+  scale-up fill check. Adaptive-mode golden images live in
+  `test/golden-adaptive/` (`test_adaptive_layout_mode.py`).
+
+## [2.4.0] - 2026-06-15
+
+### Added
+- **Score/win celebration takeover**: a full-screen flash when a favorite team
+  scores or wins a live game. The phrase is inferred from the points scored
+  between updates: `TOUCHDOWN!` / `<TEAM> TD!` (+6 or more), `<TEAM> FIELD GOAL!`
+  (+3), `<TEAM> SAFETY!` (+2), `<TEAM> SCORES!` (otherwise), and `<TEAM> WINS!`
+  when a tracked game goes final in the favorite's favor.
+  - A touchdown that lands as +6 then a +1 extra point produces a single
+    takeover (the follow-up is suppressed while the first is on screen).
+  - First-sighting and downward corrections never fire; wins only fire for games
+    actually watched go live (no false win when the board boots after the final).
+  - Per-league config: `celebration_enabled` (default on), `celebration_duration`
+    (seconds, default 8), `celebrate_opponent_scores` (default off).
+
+## [2.0.4] - 2025-10-21
+
+### Added
+- **Diagnostic Logging**: Added detailed logging to identify configuration and data fetching issues
+  - Logs league configuration (enabled status, favorite teams) on initialization
+  - Logs smart polling decisions (should_update, time_since_last_update)
+  - Logs each league check with enabled status and type information
+  - Helps diagnose why plugin isn't fetching game data
+
+### Technical Details
+- Configuration logged at startup: enabled status for each league
+- Update method logs polling interval checks
+- League iteration logs show whether each league is enabled and its data type
+- Purpose: Identify if configuration is being read correctly or if smart polling is blocking updates
+
+## [2.0.3] - 2025-10-21
+
+### Fixed
+- **CRITICAL: display() Method Signature**: Fixed argument mismatch with display controller
+  - Added `explicit_mode` as first parameter: `display(self, explicit_mode=None, force_clear=False)`
+  - Fixed "got multiple values for argument 'force_clear'" error
+  - Display controller passes mode name as first positional argument
+  - Plugin now correctly receives the requested mode from display controller
+
+### Technical Details
+- Display controller calls: `plugin.display('football_live', force_clear=False)`
+- Previous signature: `display(self, force_clear=False)` caused conflict
+- New signature: `display(self, explicit_mode=None, force_clear=False)` matches expected interface
+- The `explicit_mode` parameter receives the mode name ('football_live', 'football_recent', 'football_upcoming')
+
+## [2.0.2] - 2025-10-21
+
+### Fixed
+- **CRITICAL: AttributeError in get_info()**: Removed references to deprecated flat config attributes
+  - `show_records` and `show_ranking` are now per-league settings, not top-level attributes
+  - Fixed "AttributeError: 'FootballScoreboardPlugin' object has no attribute 'show_records'"
+  - These values are still available in the `leagues_config` dictionary returned by `get_info()`
+  - No user-facing impact - plugin will now load correctly in web interface
+
+### Technical Details
+- After nested config migration in v2.0.1, these attributes moved to per-league configuration
+- Removed lines 1778-1779 from `get_info()` method that accessed obsolete attributes
+- Settings remain accessible via: `leagues_config['nfl']['show_records']`, etc.
+
+## [2.0.1] - 2025-10-21
+
+### Fixed
+- **Interface Compatibility**: Updated `display()` method signature to match BasePlugin v3 interface
+  - Changed from `display(canvas, explicit_mode=None)` to `display(canvas, width, height, explicit_mode=None)`
+  - Ensures compatibility with LEDMatrix plugin system v2.0+
+  - No functional changes to plugin behavior
+
+## [1.6.0] - 2025-10-20
+
+### Changed
+- **Nested Config Schema**: Migrated from flat to nested config structure for better organization
+  - NFL settings now grouped under `nfl` with sub-sections:
+    - `display_modes`: Control live/recent/upcoming display
+    - `game_limits`: Configure how many games to show
+    - `display_options`: Toggle records, rankings, odds
+    - `filtering`: Control favorite teams and all-live behavior
+  - NCAA Football settings now grouped under `ncaa_fb` with same structure
+  - **Backward Compatible**: Still supports flat config structure from older versions
+  - **Benefits**:
+    - Much easier to navigate 32 configuration options
+    - Collapsible sections in web UI reduce visual clutter
+    - Logical grouping makes related settings easier to find
+    - Cleaner, more professional configuration experience
+
+### Technical Details
+- Added `get_config_value()` helper function to support both flat and nested config access
+- Config reading attempts flat keys first (e.g., `nfl_enabled`), then nested paths (e.g., `['nfl', 'enabled']`)
+- No breaking changes - existing flat configs continue to work
+- Updated logging to show whether config is flat or nested
+- Example nested schema provided in `config_schema_nested_example.json`
+
+## [1.5.2] - 2025-10-20
+
+### Added
+- **Step-by-Step Display Logging**: Added detailed step logging throughout display() method
+  - Step 1: Shows explicit_mode and current_games count
+  - Step 2: Shows auto-selected or provided display_mode  
+  - Step 3-4: Shows filtering process and results
+  - Step 5: Shows when no games available
+  - Step 6-8: Shows game display process
+  - Full exception handling with stack traces
+
+### Purpose
+- Diagnose where display() method is exiting or failing
+- Identify if games are being filtered out incorrectly
+- Confirm _display_game() is being called
+- Catch any hidden exceptions
+
+## [1.5.1] - 2025-10-20
+
+### Added
+- **Diagnostic Logging**: Added comprehensive logging to debug display controller integration
+  - Logs when `update()` method is called
+  - Logs when `display()` method is called with mode parameter
+  - Shows if plugin is initialized
+  - Shows how many games are being fetched and added
+  - Helps diagnose why display isn't updating
+
+### Purpose
+- Identify if display controller is calling plugin methods
+- Confirm data is being fetched successfully
+- Debug "manager_to_display is None" issue
+
+## [1.5.0] - 2025-10-20
+
+### Added
+- **Background Service Integration**: Async, non-blocking API fetching using background worker threads
+  - Submitted via `background_service.submit_fetch_request()` with callbacks
+  - Returns cached data immediately while fetch happens in background
+  - Prevents display freezing during 2-5 second ESPN API calls
+  - Tracks pending requests to avoid duplicate fetches
+  - Graceful fallback to synchronous fetching if background service unavailable
+
+- **Season-Wide Caching Strategy**: Dramatically reduced API calls by caching entire season
+  - **NFL**: Cache key `football_nfl_season_2024` (Aug 1 → March 1) 
+  - **NCAA FB**: Cache key `football_ncaa_fb_season_2024` (Aug 1 → Feb 1)
+  - Fetches ~300 games once per season instead of daily
+  - **API call reduction**: 99% fewer calls (1 per season vs 1 per day)
+  - Long-lived cache persists until season changes or manual clear
+
+- **Separate Live Game Fetching**: Per-league optimization for live vs season data
+  - **Live strategy**: Fetches only today's games (`?dates=20251020&limit=100`)
+  - **Season strategy**: Fetches full season data (`?dates=20240801-20250301&limit=1000`)
+  - Decision made **per league** to handle different schedules (NFL Sunday, NCAA FB Saturday)
+  - **10-25x faster** live updates (~200ms vs 2-5s)
+  - Cache TTL: 60s for live games, long-lived for season data
+
+- **Automatic Logo Downloading**: Missing logos automatically downloaded from ESPN API
+  - Uses `LogoDownloader.get_logo_filename_variations()` for name variations (e.g., TA&M vs TAANDM)
+  - Downloads logo from ESPN API if not found locally
+  - Creates placeholder image if download fails
+  - Falls back to text display if all attempts fail
+  - Matches old manager behavior exactly
+
+- **Game Rotation Logic**: Cycles through multiple games within same mode
+  - Rotates every 15 seconds by default (configurable via `game_display_duration`)
+  - Resets rotation when game list changes (using hash-based detection)
+  - Logs game switches: `"[football_recent] Switched to: AUB @ UGA"`
+  - Matches old `SportsRecent`/`SportsUpcoming` behavior exactly
+
+- **Separate Recent Game Layout**: Dedicated layout for final/completed games
+  - Score displayed at **bottom** (not middle like live games)
+  - **White** text colors (not gold/green like live games)
+  - Logos positioned closer to edges (`+2` instead of `+10`)
+  - Shows "Final" or "Final/OT" at top
+  - No down/distance or timeouts (only relevant for live games)
+  - Matches old `SportsRecent._draw_scorebug_layout()` pixel-perfect
+
+- **Display Duration Controls**: Two new configurable timing settings
+  - `display_duration` (default 30s): How long mode is shown before display controller rotates to next plugin
+  - `game_display_duration` (default 15s): How long each individual game is shown before rotating within mode
+  - Range: 5-300s for mode duration, 3-60s for game duration
+  - Allows full customization of rotation speed
+
+### Changed
+- **Recent Games Sorting**: Fixed to show most recent games first (reverse chronological order)
+  - Old behavior: Sorted by start_time ascending (showed Oct 4 game first)
+  - New behavior: Sorted by start_time descending (shows Oct 18 game first)
+  - Uses negative timestamp for recent games: `-dt.timestamp()` for reverse sort
+  - Matches old `SportsRecent` line 942: `reverse=True`
+
+- **Per-Team Game Limits**: Changed from per-league limits to per-favorite-team limits
+  - `recent_games_to_show: 1` now means **1 game per favorite team**, not 1 total
+  - Example: TB and UGA with setting=1 → Shows 1 TB game + 1 UGA game = 2 total
+  - Uses per-team counting: `{league_key}:{team_abbr}:{state}` keys
+  - Matches user expectation: "If I have 2 favorites and want 1 recent, show 2 games"
+
+- **Logging Level**: Set to INFO level to reduce verbose DEBUG output
+  - Suppresses cache hit/miss details, filtering minutiae
+  - Keeps important messages: initialization, data updates, game counts
+  - All WARNING and ERROR messages still logged
+  - Added `self.logger.setLevel(logging.INFO)` at initialization
+
+- **Skip Empty Modes**: No longer displays "No Live Games" when mode explicitly requested
+  - If display controller requests `football_live` with no games, plugin returns silently
+  - Display controller then moves to next mode in rotation
+  - Only shows "No games" message when mode was auto-selected
+  - Better UX: users only see actual game data or nothing
+
+### Fixed
+- **Live-Only Fetch Per League**: Fixed bug where NFL live games would break NCAA FB data
+  - `_should_fetch_live_only(league_key)` now checks per league, not globally
+  - Sunday NFL games no longer cause NCAA FB to fetch "today only" (and miss Saturday games)
+  - Each league makes independent decision based on its own live games
+  - Critical for handling different game schedules (NFL vs NCAA FB)
+
+### Technical Details
+- Background service initialized with 1 worker thread for memory optimization
+- Callback functions update cache asynchronously when fetches complete
+- Season cache persists across restarts (stored in cache_manager)
+- Logo download uses ESPN team ID and logo URL from API response
+- Game rotation uses tuple hash of game IDs to detect list changes
+- Per-team counting handles games involving multiple favorites correctly
+
+### Performance Impact
+- **Live games**: 10-25x faster fetches (200ms vs 2-5s)
+- **Display updates**: Non-blocking (0ms freeze vs 2-5s freeze)
+- **API calls**: 99% reduction for season data (1 call vs 365 calls per year)
+- **Memory**: Minimal increase (~1MB for full season cache)
+
+## [1.4.1] - 2025-10-20
+
+### Fixed
+- **WORKAROUND: Web UI Not Saving Favorite Teams**: Plugin now treats empty favorite teams list as "show all games"
+  - If `favorite_teams` is empty but `show_favorite_teams_only` is enabled, the filter is automatically disabled
+  - Prevents "No games" message when web UI fails to save arrays properly
+  - **ROOT CAUSE**: Web UI is saving array fields as empty strings instead of arrays
+
+### Investigation Needed
+- Web UI form submit handler not properly converting array fields before POST
+- Config shows: `nfl_favorite_teams: "" (type: str)` instead of `["TB"] (type: list)`
+- Need to fix the JavaScript in plugins.html to properly handle array submissions
+
+## [1.4.0] - 2025-10-20
+
+### Added
+- **Smart Polling**: Dynamically adjust API polling frequency based on game schedules
+  - **Live games**: Poll every 1 minute
+  - **Games < 1 hour away**: Poll every 1 minute  
+  - **Games < 2 hours away**: Poll every 5 minutes
+  - **Games today**: Poll every 10 minutes
+  - **Games tomorrow**: Poll every 30 minutes
+  - **Games 2+ days away**: Poll every 12 hours
+  - **No games scheduled**: Poll every 24 hours
+
+### Benefits
+- Dramatically reduces API calls (from 273 games every hour to smart intervals)
+- Respects ESPN's API and cache more intelligently
+- Football games only on Fri/Sat/Sun, no point polling frequently Mon-Thu
+- Logs "Next poll in: X minutes" for visibility
+
+### Technical Details
+- Implements `_should_update()` to check polling interval
+- Implements `_calculate_next_update_interval()` to adjust based on soonest game
+- Finds nearest upcoming game and calculates time until start
+- Automatically increases polling frequency as game time approaches
+
+## [1.3.0] - 2025-10-20
+
+### Fixed
+- **CRITICAL: Recent Games Not Showing**: Added date range parameters to ESPN API calls
+  - Now fetches last 21 days + next 14 days of games (matching old implementation)
+  - Previously only fetched "today's" games, missing Saturday's UGA game
+  - `recent_games_to_show` means "N games per favorite team", not "N days ago"
+  
+### Changed
+- ESPN API now called with `?dates=YYYYMMDD-YYYYMMDD` parameter
+- Matches old base class behavior (21-day lookback for recent games)
+
+### Technical Details
+- Old implementation: fetched 21 days of data, then filtered to N most recent games per team
+- New implementation: same 21-day fetch, proper filtering by favorite teams
+- This fixes UGA's Saturday game not appearing in recent games
+
+## [1.2.2] - 2025-10-20
+
+### Added
+- **Deep Game Structure Logging**: Added comprehensive logging to show exact game dict structure when checking favorites
+  - Shows all keys in game dict
+  - Shows all keys in home_team and away_team dicts
+  - Shows actual abbreviation values being compared
+  - Shows favorites list and membership check results
+  - Limited to first 3 checks to avoid log spam
+
+### Purpose
+- Compare with old base class implementation to identify structural differences
+- Diagnose why UGA and TB aren't matching when they worked in old managers
+
+## [1.2.1] - 2025-10-20
+
+### Added
+- **Enhanced Team Abbreviation Logging**: Added detailed debug logging to show exact team abbreviations returned by ESPN API
+  - Shows original and uppercase versions of team abbreviations
+  - Shows explicit membership checks against favorites list
+  - Helps diagnose why specific teams aren't matching (e.g., if ESPN uses "GEOR" instead of "UGA")
+
+### Changed
+- Set logger to INFO level by default to reduce DEBUG noise
+
+## [1.2.0] - 2025-10-20
+
+### Fixed
+- **CRITICAL: Favorite Teams Array Handling**: Added robust normalization for favorite_teams configuration
+  - Handles both array and comma-separated string formats from web UI
+  - Normalizes all team abbreviations to UPPERCASE for consistent matching
+  - Case-insensitive team matching (TB, tb, Tb all work)
+- **Configuration Validation**: Enhanced config loading with detailed logging
+  - Logs RAW config values with types to diagnose web UI saving issues
+  - Logs normalized values to show what plugin is actually using
+  - Shows enabled/disabled status for each league
+
+### Technical Details
+- Added `normalize_favorite_teams()` helper function
+- Updated `_is_favorite_game()` to use uppercase comparison
+- This ensures UGA, TB, and all favorite teams work regardless of how web UI saves them
+
+## [1.1.9] - 2025-10-20
+
+### Added
+- **Startup Configuration Logging**: Added INFO-level logging on startup to show:
+  - Which leagues are enabled (NFL, NCAA FB)
+  - How many favorite teams are configured for each league
+  - Actual favorite team lists (e.g., `['TB']`, `['UGA']`)
+- **Troubleshooting**: Immediately visible in logs to diagnose configuration issues
+
+## [1.1.8] - 2025-10-20
+
+### Added
+- **Enhanced Debug Logging**: Added detailed filtering logs to diagnose game visibility issues
+  - Shows total games available before filtering
+  - Logs first 3 games being evaluated with their favorite status
+  - Shows favorite teams list and filtering settings for each game
+  - Displays final filtered count
+- **Troubleshooting**: Helps identify why UGA or other favorite teams aren't showing
+
+## [1.1.7] - 2025-10-20
+
+### Fixed
+- **CRITICAL: Favorite Team Filtering**: Added missing favorite team filter logic matching original managers
+  - Now properly checks `show_favorite_teams_only` setting
+  - Respects `show_all_live` for showing all live games regardless of favorites
+  - Filters live, recent, and upcoming games based on favorite teams
+- **Timeout Display**: Timeouts now only display for live games (not FINAL or UPCOMING)
+- **Debug Logging**: Added detailed game breakdown logging (NFL vs NCAA FB, Live vs Recent vs Upcoming)
+  - Helps diagnose why games aren't appearing
+
+### Technical Details
+- Filtering logic now matches `SportsLive.update()` from base classes (line 1229)
+- Timeout indicators only drawn when `status.state == 'in'` (live games only)
+- Enhanced logging shows per-league and per-state game counts
+
+## [1.1.6] - 2025-10-20
+
+### Fixed
+- **Live Priority System**: Implemented `has_live_content()` method to properly integrate with display controller
+- **Display Logic**: Plugin now only shows "football_live" mode when there are actual live games
+- **No More "No Live Games"**: Plugin won't be called when there are no live games to display
+- **Mode Filtering**: Added `get_live_modes()` to only show live mode during live priority takeover
+
+## [1.1.5] - 2025-10-20
+
+### Fixed
+- **Logo Sizing**: Fixed logo size to match original managers - now uses `display_width/height * 1.5`
+- **Visual Parity**: Logos now display at the correct size matching NFL/NCAA FB managers exactly
+- **Before**: Logos were too small (20x20 max)
+- **After**: Logos properly scaled to display dimensions (96x96 for 64x64 matrix)
+
+## [1.1.4] - 2025-10-20
+
+### Changed
+- **Reduced Log Noise**: Throttled repetitive DEBUG logs to only appear every 5 minutes
+- **Smarter Logging**: "Updated football data" now only logs when game count changes or every 5 minutes
+- **Cleaner Logs**: Removed "Logo not found" debug messages, fail silently and use text fallback
+- **Performance**: Less log I/O improves overall system performance
+
+## [1.1.3] - 2025-10-20
+
+### Fixed
+- **Logo Loading Case Sensitivity**: Fixed logo loading to try uppercase, lowercase, and original case variations
+- **Missing Logos**: Now correctly finds logo files regardless of case (DET.png vs det.png)
+- **Logo Fallback**: Improved logo search to match original managers' behavior
+
+## [1.1.2] - 2025-10-19
+
+### Fixed
+- **Logo Loading**: Fixed team logo loading by using absolute paths to LEDMatrix assets directory
+- **Path Resolution**: Added logic to find LEDMatrix project root and resolve logo paths correctly
+- **Debug Logging**: Added better debug logging for logo loading failures
+- **Cross-Platform**: Improved path handling for different operating systems
+
+## [1.1.1] - 2025-10-19
+
+### Fixed
+- **Upcoming Game Display**: Fixed upcoming games to use proper layout matching original NCAA FB manager
+- **Layout Separation**: Added separate `_draw_upcoming_layout()` method for upcoming games vs live/recent games
+- **Date/Time Parsing**: Proper parsing and display of game date and time for upcoming games
+- **Odds Display**: Added `_draw_dynamic_odds()` method for proper odds display on upcoming games
+- **Visual Parity**: Upcoming games now show "Next Game", date, time, team logos, and rankings exactly like original managers
+
+## [1.1.0] - 2025-10-19
+
+### Changed
+- **MAJOR VISUAL UPDATE**: Complete rewrite of rendering to match original NFL/NCAA FB managers exactly
+  - Added proper font loading with PressStart2P and 4x6 fonts
+  - Use `textlength()` for accurate text measurement instead of approximations
+  - Updated `_draw_text_with_outline()` to accept font parameter (matching base class API)
+  
+### Added
+- Team records display (e.g., "8-1", "10-0")
+- Team rankings display for NCAA (e.g., "#1", "#5")
+- Halftime detection and display
+- Proper possession indicator mapping (home/away based on team IDs)
+- Records/rankings positioning in bottom corners above timeouts
+
+### Fixed
+- Possession indicator now correctly identifies home vs away team
+- Timeout defaults to 3 if not specified (matching football rules)
+- All text rendering now uses proper fonts for consistent appearance
+- Text positioning uses accurate measurements instead of character-count approximations
+
+### Technical Details
+- Fonts loaded: PressStart2P (8px, 10px), 4x6 (6px)
+- Rankings cache infrastructure added (for NCAA rankings)
+- Visual layout now pixel-perfect match to original managers
+- Halftime status extracted from ESPN API
+
+## [1.0.10] - 2025-10-19
+
+### Fixed
+- **CRITICAL**: Fixed type comparison error in cache validation
+  - Added explicit type conversion for all numeric configuration values
+  - Ensures `update_interval_seconds`, `recent_games_to_show`, `upcoming_games_to_show`, and `display_duration` are proper numbers
+  - Fixes "'<' not supported between instances of 'float' and 'str'" error
+
+## [1.0.9] - 2025-10-19
+
+### Fixed
+- **CRITICAL**: Fixed cache manager API compatibility
+  - Removed invalid `ttl` parameter from `cache_manager.set()` call
+  - Fixes "CacheManager.set() got an unexpected keyword argument 'ttl'" error
+  - Plugin can now successfully cache game data
+
+## [1.0.8] - 2025-10-19
+
+### Fixed
+- **CRITICAL**: Added missing `class_name` field to manifest
+  - Plugin system now correctly identifies the Python class to load
+  - Fixes "No class_name in manifest" error
+
+## [1.0.7] - 2025-10-19
+
+### Removed
+- Removed redundant `enabled` field from config schema
+  - Plugin enabled state is now managed solely by the plugin system
+  - This eliminates confusion from having two "enabled" toggles in the UI
+  - League-specific enabled fields (`nfl_enabled`, `ncaa_fb_enabled`) remain unchanged
+
+### Fixed
+- Configuration UI no longer shows duplicate enabled toggle
+
+## [1.0.6] - 2025-10-19
+
+### Changed
+- **Per-League Configuration**: All display settings are now configurable separately for NFL and NCAA Football
+  - Added `nfl_show_records`, `ncaa_fb_show_records` - Show team records per league
+  - Added `nfl_show_ranking`, `ncaa_fb_show_ranking` - Show team rankings per league (NCAA defaults to true)
+  - Added `nfl_show_odds`, `ncaa_fb_show_odds` - Show betting odds per league
+  - Added `nfl_show_favorite_teams_only`, `ncaa_fb_show_favorite_teams_only` - Filter by favorites per league
+  - Added `nfl_show_all_live`, `ncaa_fb_show_all_live` - Override favorites for live games per league
+- Removed global settings in favor of per-league control
+
+### Benefits
+- Configure rankings to show for NCAA but not NFL (or vice versa)
+- Different odds display preferences for professional vs college football
+- Independent favorite team filtering for each league
+
+## [1.0.5] - 2025-10-19
+
+### Added
+- `show_odds` - Toggle to show/hide betting odds for games
+- `show_favorite_teams_only` - Control whether to show only favorite teams or all games
+- `show_all_live` - Override favorites to show all live games
+
+### Fixed
+- Restored missing configuration options that were removed in 1.0.4
+
+## [1.0.4] - 2025-10-19
+
+### Changed
+- **BREAKING CHANGE**: Flattened configuration structure to remove nested objects
+  - Replaced `nfl.enabled` with `nfl_enabled`
+  - Replaced `nfl.favorite_teams` with `nfl_favorite_teams`
+  - Replaced `nfl.display_modes.live` with `nfl_show_live`
+  - Replaced `nfl.display_modes.recent` with `nfl_show_recent`
+  - Replaced `nfl.display_modes.upcoming` with `nfl_show_upcoming`
+  - Replaced `nfl.recent_games_to_show` with `nfl_recent_games_to_show`
+  - Replaced `nfl.upcoming_games_to_show` with `nfl_upcoming_games_to_show`
+  - Same pattern applied for NCAA FB with `ncaa_fb_*` prefixes
+  - Removed `background_service` nested configuration (handled internally)
+
+### Fixed
+- Configuration UI now properly displays all fields instead of empty text boxes
+- Web interface can now render and save all configuration options
+
+### Technical Details
+- Plugin internally rebuilds nested structure from flattened config for backward compatibility
+- All league-specific settings now use prefixed flat keys
+- Logo directories are automatically determined from league configuration
+- Update intervals are shared globally across all leagues
+
+## [1.0.3] - 2025-10-19
+
+### Initial Release
+- Support for NFL and NCAA Football games
+- Live, recent, and upcoming game modes
+- Team logos and professional scorebug layout
+- Down/distance and possession indicators
+- Timeout tracking
+- Scoring event detection
+

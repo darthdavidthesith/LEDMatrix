@@ -1,0 +1,393 @@
+from typing import Dict, Any, Optional
+import logging
+from PIL import Image, ImageDraw, ImageFont
+from sports import SportsCore, SportsLive
+from data_sources import ESPNDataSource
+# Possession geometry lives with the renderer so the classic, scroll and
+# adaptive paths all draw the same ball in the same reserved space.
+from game_renderer import draw_possession_football, possession_ball_box
+
+class Football(SportsCore):
+    """Base class for football sports with common functionality."""
+    
+    def __init__(self, config: Dict[str, Any], display_manager, cache_manager, logger: logging.Logger, sport_key: str):
+        super().__init__(config, display_manager, cache_manager, logger, sport_key)
+        self.data_source = ESPNDataSource(logger)
+        self.sport = "football"
+
+    def _extract_game_details(self, game_event: Dict) -> Optional[Dict]:
+        """Extract relevant game details from ESPN NCAA FB API response."""
+        details, home_team, away_team, status, situation = self._extract_game_details_common(game_event)
+        if details is None or home_team is None or away_team is None or status is None:
+            return
+        try:
+            competition = game_event["competitions"][0]
+            status = competition["status"]
+
+            # --- Football Specific Details (Likely same for NFL/NCAAFB) ---
+            down_distance_text = ""
+            down_distance_text_long = ""
+            possession_indicator = None # Default to None
+            scoring_event = ""  # Track scoring events
+            home_timeouts = 0
+            away_timeouts = 0
+            is_redzone = False
+            posession = None
+
+            if situation and status["type"]["state"] == "in":
+                # down = situation.get("down")
+                down_distance_text = situation.get("shortDownDistanceText")
+                down_distance_text_long = situation.get("downDistanceText")
+                # distance = situation.get("distance")
+                
+                # Detect scoring events from status detail
+                status_detail = status["type"].get("detail", "").lower()
+                status_short = status["type"].get("shortDetail", "").lower()
+                is_redzone = situation.get("isRedZone")
+                posession = situation.get("possession")
+                
+                # Check for scoring events in status text
+                if any(keyword in status_detail for keyword in ["touchdown", "td"]):
+                    scoring_event = "TOUCHDOWN"
+                elif any(keyword in status_detail for keyword in ["field goal", "fg"]):
+                    scoring_event = "FIELD GOAL"
+                elif any(keyword in status_detail for keyword in ["extra point", "pat", "point after"]):
+                    scoring_event = "PAT"
+                elif any(keyword in status_short for keyword in ["touchdown", "td"]):
+                    scoring_event = "TOUCHDOWN"
+                elif any(keyword in status_short for keyword in ["field goal", "fg"]):
+                    scoring_event = "FIELD GOAL"
+                elif any(keyword in status_short for keyword in ["extra point", "pat"]):
+                    scoring_event = "PAT"
+
+                # Determine possession based on team ID
+                possession_team_id = situation.get("possession")
+                if possession_team_id:
+                    if possession_team_id == home_team.get("id"):
+                        possession_indicator = "home"
+                    elif possession_team_id == away_team.get("id"):
+                        possession_indicator = "away"
+
+                home_timeouts = situation.get("homeTimeouts", 3) # Default to 3 if not specified
+                away_timeouts = situation.get("awayTimeouts", 3) # Default to 3 if not specified
+
+
+            # Format period/quarter
+            period = status.get("period", 0)
+            period_text = ""
+            if status["type"]["state"] == "in":
+                if period == 0:
+                    period_text = "Start" # Before kickoff
+                elif period >= 1 and period <= 4:
+                    period_text = f"Q{period}" # OT starts after Q4
+                elif period > 4:
+                    period_text = f"OT{period - 4}" # OT starts after Q4
+            elif status["type"]["state"] == "halftime" or status["type"]["name"] == "STATUS_HALFTIME": # Check explicit halftime state
+                period_text = "HALF"
+            elif status["type"]["state"] == "post":
+                 if period > 4 : period_text = "Final/OT"
+                 else: period_text = "Final"
+            elif status["type"]["state"] == "pre":
+                period_text = details.get("game_time", "") # Show time for upcoming
+
+            details.update({
+                "period": period,
+                "period_text": period_text, # Formatted quarter/status
+                "clock": status.get("displayClock", "0:00"),
+                "home_timeouts": home_timeouts,
+                "away_timeouts": away_timeouts,
+                "down_distance_text": down_distance_text, # Added Down/Distance
+                "down_distance_text_long": down_distance_text_long,
+                "is_redzone": is_redzone,
+                "possession": posession, # ID of team with possession
+                "possession_indicator": possession_indicator, # Added for easy home/away check
+                "scoring_event": scoring_event, # Track scoring events (TOUCHDOWN, FIELD GOAL, PAT)
+            })
+
+            # Basic validation (can be expanded)
+            if not details['home_abbr'] or not details['away_abbr']:
+                 self.logger.warning(f"Missing team abbreviation in event: {details['id']}")
+                 return None
+
+            self.logger.debug(f"Extracted: {details['away_abbr']}@{details['home_abbr']}, Status: {status['type']['name']}, Live: {details['is_live']}, Final: {details['is_final']}, Upcoming: {details['is_upcoming']}")
+
+            return details
+        except Exception as e:
+            # Log the problematic event structure if possible
+            logging.error(f"Error extracting game details: {e} from event: {game_event.get('id')}", exc_info=True)
+            return None
+
+    # --- Bottom-row layout ------------------------------------------------
+
+    def _record_font(self):
+        """Font used for the bottom-corner record/ranking text."""
+        return (self.fonts.get("record") or self.fonts.get("status")
+                or ImageFont.load_default())
+
+    def _corner_text(self, game: Dict, side: str) -> str:
+        """Record or ranking text shown in a bottom corner for one team."""
+        abbr = game.get(f"{side}_abbr", "")
+        if not abbr:
+            return ""
+        if self.show_ranking:
+            # Rankings replace records entirely; unranked teams show nothing
+            rank = self._team_rankings_cache.get(abbr, 0)
+            return f"#{rank}" if rank > 0 else ""
+        if self.show_records:
+            return game.get(f"{side}_record", "") or ""
+        return ""
+
+    def _bottom_free_band(self, draw, game: Dict):
+        """Span of the bottom row the timeout bars and records leave free, as
+        (first free x, first occupied x).
+
+        Derived from the same constants those two draw with, so the space the
+        possession ball is kept out of cannot drift from what is on the panel.
+        """
+        display_width = (self.display_manager.matrix.width
+                         if getattr(self.display_manager, 'matrix', None)
+                         else self.display_width)
+        block = 2 + 3 * 4 + 2 * 1 + 1  # margin + 3 bars + 2 gaps + outline
+        left, right = block, display_width - block
+        if self.show_records or self.show_ranking:
+            font = self._record_font()
+            away_text = self._corner_text(game, "away")
+            home_text = self._corner_text(game, "home")
+            if away_text:
+                left = max(left, 3 + draw.textlength(away_text, font=font))
+            if home_text:
+                right = min(right, display_width - 3 - draw.textlength(home_text, font=font))
+        return int(left), int(right)
+
+
+class FootballLive(Football, SportsLive):
+    def __init__(self, config: Dict[str, Any], display_manager, cache_manager, logger: logging.Logger, sport_key: str):
+        super().__init__(config, display_manager, cache_manager, logger, sport_key)
+
+    def _test_mode_update(self):
+        if self.current_game and self.current_game["is_live"]:
+            try:
+                minutes, seconds = map(int, self.current_game["clock"].split(':'))
+                seconds -= 1
+                if seconds < 0:
+                    seconds = 59
+                    minutes -= 1
+                    if minutes < 0:
+                        # Simulate end of quarter/game
+                        if self.current_game["period"] < 4: # Q4 is period 4
+                            self.current_game["period"] += 1
+                            # Update period_text based on new period
+                            if self.current_game["period"] == 1: self.current_game["period_text"] = "Q1"
+                            elif self.current_game["period"] == 2: self.current_game["period_text"] = "Q2"
+                            elif self.current_game["period"] == 3: self.current_game["period_text"] = "Q3"
+                            elif self.current_game["period"] == 4: self.current_game["period_text"] = "Q4"
+                            # Reset clock for next quarter (e.g., 15:00)
+                            minutes, seconds = 15, 0
+                        else:
+                            # Simulate game end
+                            self.current_game["is_live"] = False
+                            self.current_game["is_final"] = True
+                            self.current_game["period_text"] = "Final"
+                            minutes, seconds = 0, 0
+                self.current_game["clock"] = f"{minutes:02d}:{seconds:02d}"
+                # Simulate down change occasionally
+                if seconds % 15 == 0:
+                        self.current_game["down_distance_text"] = f"{['1st','2nd','3rd','4th'][seconds % 4]} & {seconds % 10 + 1}"
+                self.current_game["status_text"] = f"{self.current_game['period_text']} {self.current_game['clock']}"
+
+                # Display update handled by main loop or explicit call if needed immediately
+                # self.display(force_clear=True) # Only if immediate update is desired here
+
+            except ValueError:
+                self.logger.warning("Test mode: Could not parse clock") # Changed log prefix
+        # No actual display call here, let main loop handle it
+        
+
+    def _draw_scorebug_layout(self, game: Dict, force_clear: bool = False) -> None:
+        """Draw the detailed scorebug layout for a live NCAA FB game.""" # Updated docstring
+        try:
+            # Adaptive layout (beta, opt-in via layout_mode: "adaptive") —
+            # classic layout below is untouched when it declines.
+            if self._adaptive_scorebug(game, "live", force_clear):
+                return
+
+            # Clear the display first to ensure full coverage (like weather plugin does)
+            if force_clear:
+                self.display_manager.clear()
+            
+            # Use display_manager.matrix dimensions directly to ensure full display coverage
+            display_width = self.display_manager.matrix.width if hasattr(self.display_manager, 'matrix') and self.display_manager.matrix else self.display_width
+            display_height = self.display_manager.matrix.height if hasattr(self.display_manager, 'matrix') and self.display_manager.matrix else self.display_height
+            
+            main_img = Image.new('RGBA', (display_width, display_height), (0, 0, 0, 255))
+            overlay = Image.new('RGBA', (display_width, display_height), (0, 0, 0, 0))
+            draw_overlay = ImageDraw.Draw(overlay) # Draw text elements on overlay first
+
+            home_logo = self._load_and_resize_logo(game["home_id"], game["home_abbr"], game["home_logo_path"], game.get("home_logo_url"))
+            away_logo = self._load_and_resize_logo(game["away_id"], game["away_abbr"], game["away_logo_path"], game.get("away_logo_url"))
+
+            if not home_logo or not away_logo:
+                self.logger.error(f"Failed to load logos for live game: {game.get('id')}") # Changed log prefix
+                # Draw placeholder text if logos fail
+                # Draw on the image that is pasted; drawing on a discarded
+                # convert() copy pasted a black panel instead of "Logo Error".
+                error_img = main_img.convert('RGB')
+                draw_final = ImageDraw.Draw(error_img)
+                self._draw_text_with_outline(draw_final, "Logo Error", (5,5), self.fonts['status'])
+                self.display_manager.image.paste(error_img, (0, 0))
+                self.display_manager.update_display()
+                return
+
+            center_y = display_height // 2
+
+            # Draw logos (shifted slightly more inward than NHL perhaps) with layout offsets
+            home_x = display_width - home_logo.width + 10 + self._get_layout_offset('home_logo', 'x_offset') #adjusted from 18 # Adjust position as needed
+            home_y = center_y - (home_logo.height // 2) + self._get_layout_offset('home_logo', 'y_offset')
+            main_img.paste(home_logo, (home_x, home_y), home_logo)
+
+            away_x = -10 + self._get_layout_offset('away_logo', 'x_offset') #adjusted from 18 # Adjust position as needed
+            away_y = center_y - (away_logo.height // 2) + self._get_layout_offset('away_logo', 'y_offset')
+            main_img.paste(away_logo, (away_x, away_y), away_logo)
+
+            # --- Draw Text Elements on Overlay ---
+            # Note: Rankings are now handled in the records/rankings section below
+
+            # Scores (centered, slightly above bottom) with layout offsets
+            home_score = str(game.get("home_score", "0"))
+            away_score = str(game.get("away_score", "0"))
+            score_text = f"{away_score}-{home_score}"
+            score_width = draw_overlay.textlength(score_text, font=self.fonts['score'])
+            score_x = (display_width - score_width) // 2 + self._get_layout_offset('score', 'x_offset')
+            # Same centring as the recent scorebug (#338): the score font
+            # scales with the panel, so a fixed -3 sat it low on tall panels.
+            score_y = (display_height // 2) - max(3, self._score_font_size() // 2 - 1) + self._get_layout_offset('score', 'y_offset')
+            self._draw_text_with_outline(draw_overlay, score_text, (score_x, score_y), self.fonts['score'])
+
+            # Period/Quarter and Clock (Top center)
+            period_clock_text = f"{game.get('period_text', '')} {game.get('clock', '')}".strip()
+            if game.get("is_halftime"): \
+                period_clock_text = "Halftime" # Override for halftime
+            elif game.get("is_period_break"):
+                period_clock_text = game.get("status_text", "Period Break")
+
+            # Shed detail before legibility on a narrow panel: the full
+            # "Q4 02:34" is 64px at 8px, the whole width of a 64px display.
+            # -2 leaves room for the outline stroke at both ends.
+            period_clock_text = self._fit_text(
+                draw_overlay,
+                (period_clock_text,
+                 game.get("clock", ""),
+                 game.get("period_text", "")),
+                self.fonts['time'], display_width - 2)
+
+            status_width = draw_overlay.textlength(period_clock_text, font=self.fonts['time'])
+            status_x = (display_width - status_width) // 2 + self._get_layout_offset('status_text', 'x_offset')
+            status_y = 1 + self._get_layout_offset('status_text', 'y_offset') # Position at top
+            self._draw_text_with_outline(draw_overlay, period_clock_text, (status_x, status_y), self.fonts['time'])
+
+            # Down & Distance or Scoring Event (Below Period/Clock)
+            scoring_event = game.get("scoring_event", "")
+            down_distance = game.get("down_distance_text", "")
+            if display_width > 128:
+                down_distance = game.get("down_distance_text_long", "")
+            
+            # Show scoring event if detected, otherwise show down & distance
+            if scoring_event and game.get("is_live"):
+                # Display scoring event with special formatting
+                event_width = draw_overlay.textlength(scoring_event, font=self.fonts['detail'])
+                event_x = (display_width - event_width) // 2
+                event_y = (display_height) - 7
+                
+                # Color coding for different scoring events
+                if scoring_event == "TOUCHDOWN":
+                    event_color = (255, 215, 0)  # Gold
+                elif scoring_event == "FIELD GOAL":
+                    event_color = (0, 255, 0)    # Green
+                elif scoring_event == "PAT":
+                    event_color = (255, 165, 0)  # Orange
+                else:
+                    event_color = (255, 255, 255)  # White
+                
+                self._draw_text_with_outline(draw_overlay, scoring_event, (event_x, event_y), self.fonts['detail'], fill=event_color)
+            elif down_distance and game.get("is_live"): # Only show if live and available
+                # Text is chosen and placed exactly as before -- the long form
+                # carries the yardage and is preferred whenever it fits. The
+                # ball is fitted around it afterwards, never the other way
+                # round.
+                down_distance = self._fit_text(
+                    draw_overlay,
+                    (game.get("down_distance_text_long", ""),
+                     down_distance),
+                    self.fonts['detail'], display_width - 10)
+
+                dd_width = draw_overlay.textlength(down_distance, font=self.fonts['detail'])
+                dd_x = (display_width - dd_width) // 2 + self._get_layout_offset('status_text', 'x_offset')
+                dd_y = (display_height)- 7 + self._get_layout_offset('status_text', 'y_offset') # Top of D&D text
+                down_color = (200, 200, 0) if not game.get("is_redzone", False) else (255,0,0) # Yellowish text
+                self._draw_text_with_outline(draw_overlay, down_distance, (dd_x, dd_y), self.fonts['detail'], fill=down_color)
+
+                # Possession Indicator (small football icon), drawn only where
+                # it clears the timeout bars and the record text.
+                corner_left, corner_right = self._bottom_free_band(draw_overlay, game)
+                icon_box = possession_ball_box(
+                    dd_x, dd_width, 6, dd_y, corner_left, corner_right,
+                    game.get("possession_indicator"))
+                if icon_box:
+                    draw_possession_football(draw_overlay, icon_box)
+
+            # Timeouts (Bottom corners) - 3 small bars per team
+            timeout_bar_width = 4
+            timeout_bar_height = 2
+            timeout_spacing = 1
+            timeout_y = display_height - timeout_bar_height - 1 # Bottom edge
+
+            # Away Timeouts (Bottom Left)
+            away_timeouts_remaining = game.get("away_timeouts", 0)
+            for i in range(3):
+                to_x = 2 + i * (timeout_bar_width + timeout_spacing)
+                color = (255, 255, 255) if i < away_timeouts_remaining else (80, 80, 80) # White if available, gray if used
+                draw_overlay.rectangle([to_x, timeout_y, to_x + timeout_bar_width, timeout_y + timeout_bar_height], fill=color, outline=(0,0,0))
+
+             # Home Timeouts (Bottom Right)
+            home_timeouts_remaining = game.get("home_timeouts", 0)
+            for i in range(3):
+                to_x = display_width - 2 - timeout_bar_width - (2-i) * (timeout_bar_width + timeout_spacing)
+                color = (255, 255, 255) if i < home_timeouts_remaining else (80, 80, 80) # White if available, gray if used
+                draw_overlay.rectangle([to_x, timeout_y, to_x + timeout_bar_width, timeout_y + timeout_bar_height], fill=color, outline=(0,0,0))
+
+            # Draw odds if available
+            if 'odds' in game and game['odds']:
+                self._draw_dynamic_odds(draw_overlay, game['odds'], display_width, display_height,
+                                        top_span=(status_x, status_x + status_width))
+
+            # Draw records or rankings if enabled
+            if self.show_records or self.show_ranking:
+                record_font = self._record_font()
+                record_bbox = draw_overlay.textbbox((0,0), "0-0", font=record_font)
+                record_height = record_bbox[3] - record_bbox[1]
+                record_y = display_height - record_height - 4
+
+                # Same strings _bottom_free_band reserved space for, so the
+                # possession ball can never be drawn on top of them.
+                away_text = self._corner_text(game, "away")
+                if away_text:
+                    self._draw_text_with_outline(draw_overlay, away_text, (3, record_y),
+                                                 record_font)
+
+                home_text = self._corner_text(game, "home")
+                if home_text:
+                    home_record_width = draw_overlay.textlength(home_text, font=record_font)
+                    home_record_x = display_width - home_record_width - 3
+                    self._draw_text_with_outline(draw_overlay, home_text,
+                                                 (home_record_x, record_y), record_font)
+
+            # Composite the text overlay onto the main image
+            main_img = Image.alpha_composite(main_img, overlay)
+            main_img = main_img.convert('RGB') # Convert for display
+
+            # Display the final image - assign directly like weather plugin does for full display coverage
+            self.display_manager.image = main_img
+            self.display_manager.update_display() # Update display here for live
+
+        except Exception as e:
+            self.logger.error(f"Error displaying live Football game: {e}", exc_info=True) # Changed log prefix

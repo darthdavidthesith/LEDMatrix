@@ -1,0 +1,1219 @@
+Logging to: /home/ledpi/LEDMatrix/logs/first_time_install_20260919_213147.log
+
+This script will perform the following steps:
+1. Check prerequisites (network, disk, memory) and install system dependencies
+2. Fix cache permissions
+3. Fix assets directory permissions
+3.1. Fix plugin directory permissions
+4. Ensure configuration files exist
+5. Install Python project dependencies (requirements.txt)
+6. Build and install rpi-rgb-led-matrix and test import
+   (compiles C++; low-memory Pis get temporary swap and a serial build)
+7. Install web interface dependencies
+7.5. Install main LED Matrix service
+8. Install web interface service
+8.1. Harden systemd unit file permissions
+8.5. Install WiFi monitor service
+9. Configure web interface permissions
+10. Configure passwordless sudo access
+10.1. Configure WiFi management permissions
+11. Set up proper file ownership
+12. Configure sound module to avoid conflicts
+13. Apply performance optimizations
+14. Test the installation
+
+Do you want to proceed with the installation? (y/N): 
+
+Step 1: Installing system dependencies...
+----------------------------------------
+✓ Disk space sufficient: 21310MB available
+System memory: 905MB RAM, 0MB swap, 4 core(s)
+⚠ Low-memory device detected.
+  The rpi-rgb-led-matrix C++ build in Step 6 will use 1 parallel job(s)
+  instead of all cores, and a temporary swapfile will be added for the build
+  and removed afterwards. Without this the compiler is killed by the kernel
+  out-of-memory killer. Expect Step 6 to take 15-25 minutes.
+Hit:1 http://deb.debian.org/debian trixie InRelease
+Hit:2 http://deb.debian.org/debian trixie-updates InRelease
+Hit:3 http://deb.debian.org/debian-security trixie-security InRelease
+Get:4 https://pkgs.tailscale.com/stable/debian trixie InRelease
+Hit:5 http://archive.raspberrypi.com/debian trixie InRelease
+Fetched 6,650 B in 1s (13.2 kB/s)
+Reading package lists...
+Installing Python packages and dependencies...
+Reading package lists...
+Building dependency tree...
+Reading state information...
+python3-pip is already the newest version (25.1.1+dfsg-1+rpt1).
+python3-venv is already the newest version (3.13.5-1).
+python-dev-is-python3 is already the newest version (3.13.3-1).
+python3-pil is already the newest version (11.1.0-5+deb13u4).
+python3-pil.imagetk is already the newest version (11.1.0-5+deb13u4).
+build-essential is already the newest version (12.12).
+python3-setuptools is already the newest version (78.1.1-0.1).
+python3-wheel is already the newest version (0.46.1-2).
+cmake is already the newest version (3.31.6-2).
+ninja-build is already the newest version (1.12.1-1+b1).
+0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
+Installing additional system dependencies...
+Reading package lists...
+Building dependency tree...
+Reading state information...
+git is already the newest version (1:2.47.3-0+deb13u1).
+curl is already the newest version (8.14.1-2+deb13u5).
+wget is already the newest version (1.25.0-2).
+unzip is already the newest version (6.0-29+deb13u1).
+0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
+✓ System dependencies installed
+
+Step 2: Fixing cache permissions...
+----------------------------------
+Running cache setup script (proper group permissions)...
+Setting up LEDMatrix persistent cache directory...
+ledmatrix group already exists
+Added ledpi to ledmatrix group
+Added daemon user to ledmatrix group
+
+Cache directory created: /var/cache/ledmatrix
+Group ownership: ledmatrix
+Permissions: 775 with setgid (group-writable, new files inherit group)
+✓ Cache directory is writable by current user (ledpi)
+✓ Cache directory is writable by daemon user
+
+Setup complete! LEDMatrix will now use persistent caching.
+The cache will survive system restarts.
+
+IMPORTANT: If you just added yourself to the ledmatrix group,
+you may need to log out and back in (or run 'newgrp ledmatrix')
+for the group membership to take effect.
+
+If you see warnings about using temporary cache directory,
+the system will automatically fall back to /tmp/ledmatrix_cache/
+✓ Cache permissions fixed with proper group setup
+
+Step 3: Fixing assets directory permissions...
+--------------------------------------------
+Running assets permissions fix...
+Fixing LEDMatrix assets directory permissions...
+Project directory: /home/ledpi/LEDMatrix
+Assets directory: /home/ledpi/LEDMatrix/assets
+Real user: ledpi
+Real group: ledpi
+
+Fixing permissions for assets directory and subdirectories...
+Setting ownership of assets directory...
+✓ Set assets directory ownership to ledpi:ledpi
+Setting permissions for assets directory...
+✓ Set assets directory permissions to 777 (writable by root service user)
+
+Ensuring sports logo directories are writable...
+
+Checking directory: /home/ledpi/LEDMatrix/assets/sports/ncaa_logos
+  - Directory exists
+  - Current permissions:
+drwxrwxrwx 2 ledpi ledpi 4096 Sep 19 21:20 /home/ledpi/LEDMatrix/assets/sports/ncaa_logos
+  - Updated permissions:
+drwxrwxrwx 2 ledpi ledpi 4096 Sep 19 21:20 /home/ledpi/LEDMatrix/assets/sports/ncaa_logos
+  - Testing write access as ledpi...
+    ✓ /home/ledpi/LEDMatrix/assets/sports/ncaa_logos is writable by ledpi
+  - Testing write access as root (service user)...
+    ✓ /home/ledpi/LEDMatrix/assets/sports/ncaa_logos is writable by root
+
+Checking directory: /home/ledpi/LEDMatrix/assets/sports/nfl_logos
+  - Directory exists
+  - Current permissions:
+drwxrwxrwx 2 ledpi ledpi 4096 Sep 19 21:18 /home/ledpi/LEDMatrix/assets/sports/nfl_logos
+  - Updated permissions:
+drwxrwxrwx 2 ledpi ledpi 4096 Sep 19 21:18 /home/ledpi/LEDMatrix/assets/sports/nfl_logos
+  - Testing write access as ledpi...
+    ✓ /home/ledpi/LEDMatrix/assets/sports/nfl_logos is writable by ledpi
+  - Testing write access as root (service user)...
+    ✓ /home/ledpi/LEDMatrix/assets/sports/nfl_logos is writable by root
+
+Checking directory: /home/ledpi/LEDMatrix/assets/sports/nba_logos
+  - Directory exists
+  - Current permissions:
+drwxrwxrwx 2 ledpi ledpi 4096 Sep 19 21:18 /home/ledpi/LEDMatrix/assets/sports/nba_logos
+  - Updated permissions:
+drwxrwxrwx 2 ledpi ledpi 4096 Sep 19 21:18 /home/ledpi/LEDMatrix/assets/sports/nba_logos
+  - Testing write access as ledpi...
+    ✓ /home/ledpi/LEDMatrix/assets/sports/nba_logos is writable by ledpi
+  - Testing write access as root (service user)...
+    ✓ /home/ledpi/LEDMatrix/assets/sports/nba_logos is writable by root
+
+Checking directory: /home/ledpi/LEDMatrix/assets/sports/nhl_logos
+  - Directory exists
+  - Current permissions:
+drwxrwxrwx 2 ledpi ledpi 4096 Sep 19 21:18 /home/ledpi/LEDMatrix/assets/sports/nhl_logos
+  - Updated permissions:
+drwxrwxrwx 2 ledpi ledpi 4096 Sep 19 21:18 /home/ledpi/LEDMatrix/assets/sports/nhl_logos
+  - Testing write access as ledpi...
+    ✓ /home/ledpi/LEDMatrix/assets/sports/nhl_logos is writable by ledpi
+  - Testing write access as root (service user)...
+    ✓ /home/ledpi/LEDMatrix/assets/sports/nhl_logos is writable by root
+
+Checking directory: /home/ledpi/LEDMatrix/assets/sports/mlb_logos
+  - Directory exists
+  - Current permissions:
+drwxrwxrwx 2 ledpi ledpi 4096 Sep 19 21:18 /home/ledpi/LEDMatrix/assets/sports/mlb_logos
+  - Updated permissions:
+drwxrwxrwx 2 ledpi ledpi 4096 Sep 19 21:18 /home/ledpi/LEDMatrix/assets/sports/mlb_logos
+  - Testing write access as ledpi...
+    ✓ /home/ledpi/LEDMatrix/assets/sports/mlb_logos is writable by ledpi
+  - Testing write access as root (service user)...
+    ✓ /home/ledpi/LEDMatrix/assets/sports/mlb_logos is writable by root
+
+Checking directory: /home/ledpi/LEDMatrix/assets/sports/milb_logos
+  - Directory exists
+  - Current permissions:
+drwxrwxrwx 2 ledpi ledpi 4096 Sep 19 21:18 /home/ledpi/LEDMatrix/assets/sports/milb_logos
+  - Updated permissions:
+drwxrwxrwx 2 ledpi ledpi 4096 Sep 19 21:18 /home/ledpi/LEDMatrix/assets/sports/milb_logos
+  - Testing write access as ledpi...
+    ✓ /home/ledpi/LEDMatrix/assets/sports/milb_logos is writable by ledpi
+  - Testing write access as root (service user)...
+    ✓ /home/ledpi/LEDMatrix/assets/sports/milb_logos is writable by root
+
+Checking directory: /home/ledpi/LEDMatrix/assets/sports/soccer_logos
+  - Directory exists
+  - Current permissions:
+drwxrwxrwx 2 ledpi ledpi 4096 Sep 19 21:18 /home/ledpi/LEDMatrix/assets/sports/soccer_logos
+  - Updated permissions:
+drwxrwxrwx 2 ledpi ledpi 4096 Sep 19 21:18 /home/ledpi/LEDMatrix/assets/sports/soccer_logos
+  - Testing write access as ledpi...
+    ✓ /home/ledpi/LEDMatrix/assets/sports/soccer_logos is writable by ledpi
+  - Testing write access as root (service user)...
+    ✓ /home/ledpi/LEDMatrix/assets/sports/soccer_logos is writable by root
+
+Testing write access to ncaa_logos directory specifically...
+✓ Successfully created test file in ncaa_logos directory
+✓ Successfully removed test file
+
+Assets permissions fix completed!
+
+The application should now be able to download and save team logos.
+If you still see permission errors, check which user is running the LEDMatrix service
+and ensure it matches the owner above (ledpi).
+
+You may need to restart the LEDMatrix service for the changes to take effect:
+  sudo systemctl restart ledmatrix.service
+✓ Assets permissions fixed
+
+Step 3.1: Fixing plugin directory permissions...
+----------------------------------------------
+
+Running plugin permissions fix...
+Fixing permissions for plugins directory...
+Project root directory: /home/ledpi/LEDMatrix
+Plugins directory: /home/ledpi/LEDMatrix/plugins
+Plugin-repos directory: /home/ledpi/LEDMatrix/plugin-repos
+Actual user: ledpi
+
+✓ Home directory permissions OK (755)
+
+Setting ownership to root:ledpi...
+Setting directory permissions to 2775 (rwxrwxr-x + sticky bit)...
+Setting file permissions to 664...
+Setting ownership of plugin-repos to root:ledpi...
+Setting plugin-repos directory permissions to 2775 (rwxrwxr-x + sticky bit)...
+Setting plugin-repos file permissions to 664...
+Plugin permissions fixed successfully!
+
+Directory structure:
+plugins/:
+total 12
+drwxrwsr-x  2 root  ledpi 4096 Sep 19 21:18 .
+drwxrwxr-x 20 ledpi ledpi 4096 Sep 19 21:26 ..
+-rw-rw-r--  1 root  ledpi  415 Sep 19 21:18 .gitkeep
+
+plugin-repos/:
+total 24
+drwxrwsr-x  6 root  ledpi 4096 Sep 19 21:18 .
+drwxrwxr-x 20 ledpi ledpi 4096 Sep 19 21:26 ..
+drwxrwsr-x  5 root  ledpi 4096 Sep 19 21:18 football-scoreboard
+drwxrwsr-x  8 root  ledpi 4096 Sep 19 21:18 ledmatrix-flights
+drwxrwsr-x  2 root  ledpi 4096 Sep 19 21:18 starlark-apps
+drwxrwsr-x  2 root  ledpi 4096 Sep 19 21:18 web-ui-info
+
+Permissions summary:
+- Root service: Can read/write plugins (for PWM hardware access)
+- Web service (ledpi): Can read/write plugins (for installation)
+- Others: Can read plugins
+✓ Plugin permissions fixed
+Web service runs as root, setting ownership to root:ledpi...
+Setting plugin-repos directory permissions to 2775 (sticky bit)...
+Setting plugin-repos file permissions to 664...
+✓ Plugin-repos directory permissions fixed
+
+Step 4: Ensuring configuration files exist...
+----------------------------------------------
+✓ Main config file already exists
+Automatically check for and install LEDMatrix updates once a week, with automatic rollback if an update breaks something? (y/N): 
+✓ Weekly automatic updates off
+✓ Secrets file already exists
+
+Step 5: Installing Python project dependencies...
+-----------------------------------------------
+Reading requirements from: /home/ledpi/LEDMatrix/requirements.txt
+Checking pip version...
+pip 25.1.1 from /usr/lib/python3/dist-packages/pip (python 3.13)
+Found 10 package(s) to install
+
+[1/10] Installing: Pillow>=12.2.0,<13.0.0
+  Output:
+    Collecting Pillow<13.0.0,>=12.2.0
+      Downloading pillow-12.3.0-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl.metadata (9.1 kB)
+    Downloading pillow-12.3.0-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl (6.3 MB)
+    Installing collected packages: Pillow
+    Successfully installed Pillow-12.3.0
+    WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+Using pip 25.1.1 from /usr/lib/python3/dist-packages/pip (python 3.13)
+Looking in indexes: https://pypi.org/simple, https://www.piwheels.org/simple
+Collecting Pillow<13.0.0,>=12.2.0
+  Obtaining dependency information for Pillow<13.0.0,>=12.2.0 from https://files.pythonhosted.org/packages/1f/01/e18aff37cb0b4aac47ac90f016d347a49aca667ef97f190b06ac2aabc928/pillow-12.3.0-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl.metadata
+  Downloading pillow-12.3.0-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl.metadata (9.1 kB)
+Downloading pillow-12.3.0-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl (6.3 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.3/6.3 MB 13.7 MB/s eta 0:00:00
+Installing collected packages: Pillow
+Successfully installed Pillow-12.3.0
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+✓ Successfully installed: Pillow>=12.2.0,<13.0.0
+
+[2/10] Installing: numpy>=1.24.0
+  Output:
+    Collecting numpy>=1.24.0
+      Downloading numpy-2.5.3-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl.metadata (6.6 kB)
+    Downloading numpy-2.5.3-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl (15.7 MB)
+    Installing collected packages: numpy
+    ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
+    Successfully installed numpy-2.5.3
+    WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+Using pip 25.1.1 from /usr/lib/python3/dist-packages/pip (python 3.13)
+Looking in indexes: https://pypi.org/simple, https://www.piwheels.org/simple
+  Link requires a different Python (3.13.5 not in: '>=3.7,<3.11'): https://files.pythonhosted.org/packages/3a/be/650f9c091ef71cb01d735775d554e068752d3ff63d7943b26316dc401749/numpy-1.21.2.zip (from https://pypi.org/simple/numpy/) (requires-python:>=3.7,<3.11)
+  Link requires a different Python (3.13.5 not in: '>=3.7,<3.11'): https://files.pythonhosted.org/packages/5f/d6/ad58ded26556eaeaa8c971e08b6466f17c4ac4d786cd3d800e26ce59cc01/numpy-1.21.3.zip (from https://pypi.org/simple/numpy/) (requires-python:>=3.7,<3.11)
+  Link requires a different Python (3.13.5 not in: '>=3.7,<3.11'): https://files.pythonhosted.org/packages/fb/48/b0708ebd7718a8933f0d3937513ef8ef2f4f04529f1f66ca86d873043921/numpy-1.21.4.zip (from https://pypi.org/simple/numpy/) (requires-python:>=3.7,<3.11)
+  Link requires a different Python (3.13.5 not in: '>=3.7,<3.11'): https://files.pythonhosted.org/packages/c2/a8/a924a09492bdfee8c2ec3094d0a13f2799800b4fdc9c890738aeeb12c72e/numpy-1.21.5.zip (from https://pypi.org/simple/numpy/) (requires-python:>=3.7,<3.11)
+  Link requires a different Python (3.13.5 not in: '>=3.7,<3.11'): https://files.pythonhosted.org/packages/45/b7/de7b8e67f2232c26af57c205aaad29fe17754f793404f59c8a730c7a191a/numpy-1.21.6.zip (from https://pypi.org/simple/numpy/) (requires-python:>=3.7,<3.11)
+  Link requires a different Python (3.13.5 not in: '<3.13,>=3.9'): https://files.pythonhosted.org/packages/55/b3/b13bce39ba82b7398c06d10446f5ffd5c07db39b09bd37370dc720c7951c/numpy-1.26.0.tar.gz (from https://pypi.org/simple/numpy/) (requires-python:<3.13,>=3.9)
+  Link requires a different Python (3.13.5 not in: '<3.13,>=3.9'): https://files.pythonhosted.org/packages/78/23/f78fd8311e0f710fe1d065d50b92ce0057fe877b8ed7fd41b28ad6865bfc/numpy-1.26.1.tar.gz (from https://pypi.org/simple/numpy/) (requires-python:<3.13,>=3.9)
+Collecting numpy>=1.24.0
+  Obtaining dependency information for numpy>=1.24.0 from https://files.pythonhosted.org/packages/73/85/735720d04ec197c5dcfacdfc9922667c7f1f5f496a279b7ba4d7c74c4cc7/numpy-2.5.3-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl.metadata
+  Downloading numpy-2.5.3-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl.metadata (6.6 kB)
+Downloading numpy-2.5.3-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl (15.7 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 15.7/15.7 MB 13.1 MB/s eta 0:00:00
+Installing collected packages: numpy
+  changing mode of /usr/local/bin/f2py to 755
+  changing mode of /usr/local/bin/numpy-config to 755
+ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
+types-seaborn 0.13.2 requires matplotlib>=3.8; python_version >= "3.9", which is not installed.
+types-seaborn 0.13.2 requires pandas-stubs, which is not installed.
+Successfully installed numpy-2.5.3
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+✓ Successfully installed: numpy>=1.24.0
+
+[3/10] Installing: pytz>=2024.2,<2025.0
+  Output:
+    Collecting pytz<2025.0,>=2024.2
+      Downloading https://www.piwheels.org/simple/pytz/pytz-2024.2-py3-none-any.whl.metadata (22 kB)
+    Downloading https://www.piwheels.org/simple/pytz/pytz-2024.2-py3-none-any.whl (507 kB)
+    Installing collected packages: pytz
+    Successfully installed pytz-2024.2
+    WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+Using pip 25.1.1 from /usr/lib/python3/dist-packages/pip (python 3.13)
+Looking in indexes: https://pypi.org/simple, https://www.piwheels.org/simple
+  DEPRECATION: Wheel filename 'pytz-2013d-py3-none-any.whl' is not correctly normalised. Future versions of pip will raise the following error:
+  Invalid wheel filename (invalid version): 'pytz-2013d-py3-none-any'
+  
+   pip 25.3 will enforce this behaviour change. A possible replacement is to rename the wheel to use a correctly normalised name (this may require updating the version in the project metadata). Discussion can be found at https://github.com/pypa/pip/issues/12938
+  DEPRECATION: Wheel filename 'pytz-2012j-py3-none-any.whl' is not correctly normalised. Future versions of pip will raise the following error:
+  Invalid wheel filename (invalid version): 'pytz-2012j-py3-none-any'
+  
+   pip 25.3 will enforce this behaviour change. A possible replacement is to rename the wheel to use a correctly normalised name (this may require updating the version in the project metadata). Discussion can be found at https://github.com/pypa/pip/issues/12938
+  DEPRECATION: Wheel filename 'pytz-2012h-py3-none-any.whl' is not correctly normalised. Future versions of pip will raise the following error:
+  Invalid wheel filename (invalid version): 'pytz-2012h-py3-none-any'
+  
+   pip 25.3 will enforce this behaviour change. A possible replacement is to rename the wheel to use a correctly normalised name (this may require updating the version in the project metadata). Discussion can be found at https://github.com/pypa/pip/issues/12938
+  DEPRECATION: Wheel filename 'pytz-2012g-py3-none-any.whl' is not correctly normalised. Future versions of pip will raise the following error:
+  Invalid wheel filename (invalid version): 'pytz-2012g-py3-none-any'
+  
+   pip 25.3 will enforce this behaviour change. A possible replacement is to rename the wheel to use a correctly normalised name (this may require updating the version in the project metadata). Discussion can be found at https://github.com/pypa/pip/issues/12938
+  DEPRECATION: Wheel filename 'pytz-2012f-py3-none-any.whl' is not correctly normalised. Future versions of pip will raise the following error:
+  Invalid wheel filename (invalid version): 'pytz-2012f-py3-none-any'
+  
+   pip 25.3 will enforce this behaviour change. A possible replacement is to rename the wheel to use a correctly normalised name (this may require updating the version in the project metadata). Discussion can be found at https://github.com/pypa/pip/issues/12938
+  DEPRECATION: Wheel filename 'pytz-2012d-py3-none-any.whl' is not correctly normalised. Future versions of pip will raise the following error:
+  Invalid wheel filename (invalid version): 'pytz-2012d-py3-none-any'
+  
+   pip 25.3 will enforce this behaviour change. A possible replacement is to rename the wheel to use a correctly normalised name (this may require updating the version in the project metadata). Discussion can be found at https://github.com/pypa/pip/issues/12938
+  DEPRECATION: Wheel filename 'pytz-2011n-py3-none-any.whl' is not correctly normalised. Future versions of pip will raise the following error:
+  Invalid wheel filename (invalid version): 'pytz-2011n-py3-none-any'
+  
+   pip 25.3 will enforce this behaviour change. A possible replacement is to rename the wheel to use a correctly normalised name (this may require updating the version in the project metadata). Discussion can be found at https://github.com/pypa/pip/issues/12938
+  DEPRECATION: Wheel filename 'pytz-2011k-py3-none-any.whl' is not correctly normalised. Future versions of pip will raise the following error:
+  Invalid wheel filename (invalid version): 'pytz-2011k-py3-none-any'
+  
+   pip 25.3 will enforce this behaviour change. A possible replacement is to rename the wheel to use a correctly normalised name (this may require updating the version in the project metadata). Discussion can be found at https://github.com/pypa/pip/issues/12938
+  DEPRECATION: Wheel filename 'pytz-2011j-py3-none-any.whl' is not correctly normalised. Future versions of pip will raise the following error:
+  Invalid wheel filename (invalid version): 'pytz-2011j-py3-none-any'
+  
+   pip 25.3 will enforce this behaviour change. A possible replacement is to rename the wheel to use a correctly normalised name (this may require updating the version in the project metadata). Discussion can be found at https://github.com/pypa/pip/issues/12938
+  DEPRECATION: Wheel filename 'pytz-2011h-py3-none-any.whl' is not correctly normalised. Future versions of pip will raise the following error:
+  Invalid wheel filename (invalid version): 'pytz-2011h-py3-none-any'
+  
+   pip 25.3 will enforce this behaviour change. A possible replacement is to rename the wheel to use a correctly normalised name (this may require updating the version in the project metadata). Discussion can be found at https://github.com/pypa/pip/issues/12938
+  DEPRECATION: Wheel filename 'pytz-2011g-py3-none-any.whl' is not correctly normalised. Future versions of pip will raise the following error:
+  Invalid wheel filename (invalid version): 'pytz-2011g-py3-none-any'
+  
+   pip 25.3 will enforce this behaviour change. A possible replacement is to rename the wheel to use a correctly normalised name (this may require updating the version in the project metadata). Discussion can be found at https://github.com/pypa/pip/issues/12938
+  DEPRECATION: Wheel filename 'pytz-2011e-py3-none-any.whl' is not correctly normalised. Future versions of pip will raise the following error:
+  Invalid wheel filename (invalid version): 'pytz-2011e-py3-none-any'
+  
+   pip 25.3 will enforce this behaviour change. A possible replacement is to rename the wheel to use a correctly normalised name (this may require updating the version in the project metadata). Discussion can be found at https://github.com/pypa/pip/issues/12938
+  DEPRECATION: Wheel filename 'pytz-2011d-py3-none-any.whl' is not correctly normalised. Future versions of pip will raise the following error:
+  Invalid wheel filename (invalid version): 'pytz-2011d-py3-none-any'
+  
+   pip 25.3 will enforce this behaviour change. A possible replacement is to rename the wheel to use a correctly normalised name (this may require updating the version in the project metadata). Discussion can be found at https://github.com/pypa/pip/issues/12938
+Collecting pytz<2025.0,>=2024.2
+  Obtaining dependency information for pytz<2025.0,>=2024.2 from https://www.piwheels.org/simple/pytz/pytz-2024.2-py3-none-any.whl.metadata
+  Downloading https://www.piwheels.org/simple/pytz/pytz-2024.2-py3-none-any.whl.metadata (22 kB)
+Downloading https://www.piwheels.org/simple/pytz/pytz-2024.2-py3-none-any.whl (507 kB)
+Installing collected packages: pytz
+Successfully installed pytz-2024.2
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+✓ Successfully installed: pytz>=2024.2,<2025.0
+
+[4/10] Installing: requests>=2.33.0,<3.0.0
+  Output:
+    Collecting requests<3.0.0,>=2.33.0
+      Downloading https://www.piwheels.org/simple/requests/requests-2.34.2-py3-none-any.whl.metadata (4.8 kB)
+    Collecting charset_normalizer<4,>=2 (from requests<3.0.0,>=2.33.0)
+      Downloading charset_normalizer-3.5.1-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (45 kB)
+    Collecting idna<4,>=2.5 (from requests<3.0.0,>=2.33.0)
+      Downloading https://www.piwheels.org/simple/idna/idna-3.20-py3-none-any.whl.metadata (7.2 kB)
+    Collecting urllib3<3,>=1.26 (from requests<3.0.0,>=2.33.0)
+      Downloading https://www.piwheels.org/simple/urllib3/urllib3-2.8.0-py3-none-any.whl.metadata (7.4 kB)
+    Collecting certifi>=2023.5.7 (from requests<3.0.0,>=2.33.0)
+      Downloading https://www.piwheels.org/simple/certifi/certifi-2026.7.22-py3-none-any.whl.metadata (2.5 kB)
+    Downloading https://www.piwheels.org/simple/requests/requests-2.34.2-py3-none-any.whl (73 kB)
+    Downloading charset_normalizer-3.5.1-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (240 kB)
+    Downloading https://www.piwheels.org/simple/idna/idna-3.20-py3-none-any.whl (69 kB)
+    Downloading https://www.piwheels.org/simple/urllib3/urllib3-2.8.0-py3-none-any.whl (135 kB)
+    Downloading https://www.piwheels.org/simple/certifi/certifi-2026.7.22-py3-none-any.whl (136 kB)
+Using pip 25.1.1 from /usr/lib/python3/dist-packages/pip (python 3.13)
+Looking in indexes: https://pypi.org/simple, https://www.piwheels.org/simple
+Collecting requests<3.0.0,>=2.33.0
+  Obtaining dependency information for requests<3.0.0,>=2.33.0 from https://www.piwheels.org/simple/requests/requests-2.34.2-py3-none-any.whl.metadata
+  Downloading https://www.piwheels.org/simple/requests/requests-2.34.2-py3-none-any.whl.metadata (4.8 kB)
+Collecting charset_normalizer<4,>=2 (from requests<3.0.0,>=2.33.0)
+  Obtaining dependency information for charset_normalizer<4,>=2 from https://files.pythonhosted.org/packages/31/e7/1d994be1b93d41e9502b8b0460eaa88a1dd8df335df415db87d6c3e91ab2/charset_normalizer-3.5.1-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata
+  Downloading charset_normalizer-3.5.1-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (45 kB)
+Collecting idna<4,>=2.5 (from requests<3.0.0,>=2.33.0)
+  Obtaining dependency information for idna<4,>=2.5 from https://www.piwheels.org/simple/idna/idna-3.20-py3-none-any.whl.metadata
+  Downloading https://www.piwheels.org/simple/idna/idna-3.20-py3-none-any.whl.metadata (7.2 kB)
+Collecting urllib3<3,>=1.26 (from requests<3.0.0,>=2.33.0)
+  Obtaining dependency information for urllib3<3,>=1.26 from https://www.piwheels.org/simple/urllib3/urllib3-2.8.0-py3-none-any.whl.metadata
+  Downloading https://www.piwheels.org/simple/urllib3/urllib3-2.8.0-py3-none-any.whl.metadata (7.4 kB)
+Collecting certifi>=2023.5.7 (from requests<3.0.0,>=2.33.0)
+  Obtaining dependency information for certifi>=2023.5.7 from https://www.piwheels.org/simple/certifi/certifi-2026.7.22-py3-none-any.whl.metadata
+  Downloading https://www.piwheels.org/simple/certifi/certifi-2026.7.22-py3-none-any.whl.metadata (2.5 kB)
+Downloading https://www.piwheels.org/simple/requests/requests-2.34.2-py3-none-any.whl (73 kB)
+Downloading charset_normalizer-3.5.1-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (240 kB)
+Downloading https://www.piwheels.org/simple/idna/idna-3.20-py3-none-any.whl (69 kB)
+Downloading https://www.piwheels.org/simple/urllib3/urllib3-2.8.0-py3-none-any.whl (135 kB)
+Downloading https://www.piwheels.org/simple/certifi/certifi-2026.7.22-py3-none-any.whl (136 kB)
+Installing collected packages: urllib3, idna, charset_normalizer, certifi, requests
+  changing mode of /usr/local/bin/idna to 755
+  changing mode of /usr/local/bin/normalizer to 755
+
+Successfully installed certifi-2026.7.22 charset_normalizer-3.5.1 idna-3.20 requests-2.34.2 urllib3-2.8.0
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+✓ Successfully installed: requests>=2.33.0,<3.0.0
+
+[5/10] Installing: urllib3>=2.7.0,<3.0.0
+  Output:
+    Collecting urllib3<3.0.0,>=2.7.0
+      Downloading https://www.piwheels.org/simple/urllib3/urllib3-2.8.0-py3-none-any.whl.metadata (7.4 kB)
+    Downloading https://www.piwheels.org/simple/urllib3/urllib3-2.8.0-py3-none-any.whl (135 kB)
+    Installing collected packages: urllib3
+    Successfully installed urllib3-2.8.0
+    WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+Using pip 25.1.1 from /usr/lib/python3/dist-packages/pip (python 3.13)
+Looking in indexes: https://pypi.org/simple, https://www.piwheels.org/simple
+Collecting urllib3<3.0.0,>=2.7.0
+  Obtaining dependency information for urllib3<3.0.0,>=2.7.0 from https://www.piwheels.org/simple/urllib3/urllib3-2.8.0-py3-none-any.whl.metadata
+  Downloading https://www.piwheels.org/simple/urllib3/urllib3-2.8.0-py3-none-any.whl.metadata (7.4 kB)
+Downloading https://www.piwheels.org/simple/urllib3/urllib3-2.8.0-py3-none-any.whl (135 kB)
+Installing collected packages: urllib3
+Successfully installed urllib3-2.8.0
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+✓ Successfully installed: urllib3>=2.7.0,<3.0.0
+
+[6/10] Installing: freetype-py>=2.5.1,<3.0.0
+  Output:
+    Collecting freetype-py<3.0.0,>=2.5.1
+      Downloading freetype_py-2.5.1-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl.metadata (6.3 kB)
+    Downloading freetype_py-2.5.1-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl (1.1 MB)
+    Installing collected packages: freetype-py
+    Successfully installed freetype-py-2.5.1
+    WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+Using pip 25.1.1 from /usr/lib/python3/dist-packages/pip (python 3.13)
+Looking in indexes: https://pypi.org/simple, https://www.piwheels.org/simple
+Collecting freetype-py<3.0.0,>=2.5.1
+  Obtaining dependency information for freetype-py<3.0.0,>=2.5.1 from https://files.pythonhosted.org/packages/a2/93/280ad06dc944e40789b0a641492321a2792db82edda485369cbc59d14366/freetype_py-2.5.1-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl.metadata
+  Downloading freetype_py-2.5.1-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl.metadata (6.3 kB)
+Downloading freetype_py-2.5.1-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl (1.1 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.1/1.1 MB 12.7 MB/s eta 0:00:00
+Installing collected packages: freetype-py
+Successfully installed freetype-py-2.5.1
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+✓ Successfully installed: freetype-py>=2.5.1,<3.0.0
+
+[7/10] Installing: spotipy>=2.25.2,<3.0.0
+  Output:
+    Collecting spotipy<3.0.0,>=2.25.2
+      Downloading https://www.piwheels.org/simple/spotipy/spotipy-2.26.0-py3-none-any.whl.metadata (5.1 kB)
+    Collecting redis>=3.5.3 (from spotipy<3.0.0,>=2.25.2)
+      Downloading https://www.piwheels.org/simple/redis/redis-8.1.0-py3-none-any.whl.metadata (16 kB)
+    Collecting requests>=2.25.0 (from spotipy<3.0.0,>=2.25.2)
+      Downloading https://www.piwheels.org/simple/requests/requests-2.34.2-py3-none-any.whl.metadata (4.8 kB)
+    Collecting urllib3>=1.26.0 (from spotipy<3.0.0,>=2.25.2)
+      Downloading https://www.piwheels.org/simple/urllib3/urllib3-2.8.0-py3-none-any.whl.metadata (7.4 kB)
+    Collecting charset_normalizer<4,>=2 (from requests>=2.25.0->spotipy<3.0.0,>=2.25.2)
+      Downloading charset_normalizer-3.5.1-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (45 kB)
+    Collecting idna<4,>=2.5 (from requests>=2.25.0->spotipy<3.0.0,>=2.25.2)
+      Downloading https://www.piwheels.org/simple/idna/idna-3.20-py3-none-any.whl.metadata (7.2 kB)
+    Collecting certifi>=2023.5.7 (from requests>=2.25.0->spotipy<3.0.0,>=2.25.2)
+      Downloading https://www.piwheels.org/simple/certifi/certifi-2026.7.22-py3-none-any.whl.metadata (2.5 kB)
+    Downloading https://www.piwheels.org/simple/spotipy/spotipy-2.26.0-py3-none-any.whl (31 kB)
+Using pip 25.1.1 from /usr/lib/python3/dist-packages/pip (python 3.13)
+Looking in indexes: https://pypi.org/simple, https://www.piwheels.org/simple
+Collecting spotipy<3.0.0,>=2.25.2
+  Obtaining dependency information for spotipy<3.0.0,>=2.25.2 from https://www.piwheels.org/simple/spotipy/spotipy-2.26.0-py3-none-any.whl.metadata
+  Downloading https://www.piwheels.org/simple/spotipy/spotipy-2.26.0-py3-none-any.whl.metadata (5.1 kB)
+Collecting redis>=3.5.3 (from spotipy<3.0.0,>=2.25.2)
+  Obtaining dependency information for redis>=3.5.3 from https://www.piwheels.org/simple/redis/redis-8.1.0-py3-none-any.whl.metadata
+  Downloading https://www.piwheels.org/simple/redis/redis-8.1.0-py3-none-any.whl.metadata (16 kB)
+Collecting requests>=2.25.0 (from spotipy<3.0.0,>=2.25.2)
+  Obtaining dependency information for requests>=2.25.0 from https://www.piwheels.org/simple/requests/requests-2.34.2-py3-none-any.whl.metadata
+  Downloading https://www.piwheels.org/simple/requests/requests-2.34.2-py3-none-any.whl.metadata (4.8 kB)
+Collecting urllib3>=1.26.0 (from spotipy<3.0.0,>=2.25.2)
+  Obtaining dependency information for urllib3>=1.26.0 from https://www.piwheels.org/simple/urllib3/urllib3-2.8.0-py3-none-any.whl.metadata
+  Downloading https://www.piwheels.org/simple/urllib3/urllib3-2.8.0-py3-none-any.whl.metadata (7.4 kB)
+Collecting charset_normalizer<4,>=2 (from requests>=2.25.0->spotipy<3.0.0,>=2.25.2)
+  Obtaining dependency information for charset_normalizer<4,>=2 from https://files.pythonhosted.org/packages/31/e7/1d994be1b93d41e9502b8b0460eaa88a1dd8df335df415db87d6c3e91ab2/charset_normalizer-3.5.1-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata
+  Downloading charset_normalizer-3.5.1-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (45 kB)
+Collecting idna<4,>=2.5 (from requests>=2.25.0->spotipy<3.0.0,>=2.25.2)
+  Obtaining dependency information for idna<4,>=2.5 from https://www.piwheels.org/simple/idna/idna-3.20-py3-none-any.whl.metadata
+  Downloading https://www.piwheels.org/simple/idna/idna-3.20-py3-none-any.whl.metadata (7.2 kB)
+Collecting certifi>=2023.5.7 (from requests>=2.25.0->spotipy<3.0.0,>=2.25.2)
+  Obtaining dependency information for certifi>=2023.5.7 from https://www.piwheels.org/simple/certifi/certifi-2026.7.22-py3-none-any.whl.metadata
+  Downloading https://www.piwheels.org/simple/certifi/certifi-2026.7.22-py3-none-any.whl.metadata (2.5 kB)
+Downloading https://www.piwheels.org/simple/spotipy/spotipy-2.26.0-py3-none-any.whl (31 kB)
+Downloading https://www.piwheels.org/simple/redis/redis-8.1.0-py3-none-any.whl (560 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 560.6/560.6 kB 2.5 MB/s eta 0:00:00
+Downloading https://www.piwheels.org/simple/requests/requests-2.34.2-py3-none-any.whl (73 kB)
+Downloading charset_normalizer-3.5.1-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (240 kB)
+Downloading https://www.piwheels.org/simple/idna/idna-3.20-py3-none-any.whl (69 kB)
+Downloading https://www.piwheels.org/simple/urllib3/urllib3-2.8.0-py3-none-any.whl (135 kB)
+Downloading https://www.piwheels.org/simple/certifi/certifi-2026.7.22-py3-none-any.whl (136 kB)
+Installing collected packages: urllib3, redis, idna, charset_normalizer, certifi, requests, spotipy
+  changing mode of /usr/local/bin/idna to 755
+  changing mode of /usr/local/bin/normalizer to 755
+
+Successfully installed certifi-2026.7.22 charset_normalizer-3.5.1 idna-3.20 redis-8.1.0 requests-2.34.2 spotipy-2.26.0 urllib3-2.8.0
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+✓ Successfully installed: spotipy>=2.25.2,<3.0.0
+
+[8/10] Installing: Flask>=3.1.3,<4.0.0
+  Output:
+    Collecting Flask<4.0.0,>=3.1.3
+      Downloading https://www.piwheels.org/simple/flask/flask-3.1.3-py3-none-any.whl.metadata (3.2 kB)
+    Collecting blinker>=1.9.0 (from Flask<4.0.0,>=3.1.3)
+      Downloading https://www.piwheels.org/simple/blinker/blinker-1.9.0-py3-none-any.whl.metadata (1.6 kB)
+    Collecting click>=8.1.3 (from Flask<4.0.0,>=3.1.3)
+      Downloading https://www.piwheels.org/simple/click/click-8.5.0-py3-none-any.whl.metadata (2.6 kB)
+    Collecting itsdangerous>=2.2.0 (from Flask<4.0.0,>=3.1.3)
+      Downloading https://www.piwheels.org/simple/itsdangerous/itsdangerous-2.2.0-py3-none-any.whl.metadata (1.9 kB)
+    Collecting jinja2>=3.1.2 (from Flask<4.0.0,>=3.1.3)
+      Downloading https://www.piwheels.org/simple/jinja2/jinja2-3.1.6-py3-none-any.whl.metadata (2.9 kB)
+    Collecting markupsafe>=2.1.1 (from Flask<4.0.0,>=3.1.3)
+      Downloading markupsafe-3.0.3-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (2.7 kB)
+    Collecting werkzeug>=3.1.0 (from Flask<4.0.0,>=3.1.3)
+      Downloading https://www.piwheels.org/simple/werkzeug/werkzeug-3.1.8-py3-none-any.whl.metadata (4.0 kB)
+    Downloading https://www.piwheels.org/simple/flask/flask-3.1.3-py3-none-any.whl (103 kB)
+Using pip 25.1.1 from /usr/lib/python3/dist-packages/pip (python 3.13)
+Looking in indexes: https://pypi.org/simple, https://www.piwheels.org/simple
+Collecting Flask<4.0.0,>=3.1.3
+  Obtaining dependency information for Flask<4.0.0,>=3.1.3 from https://www.piwheels.org/simple/flask/flask-3.1.3-py3-none-any.whl.metadata
+  Downloading https://www.piwheels.org/simple/flask/flask-3.1.3-py3-none-any.whl.metadata (3.2 kB)
+Collecting blinker>=1.9.0 (from Flask<4.0.0,>=3.1.3)
+  Obtaining dependency information for blinker>=1.9.0 from https://www.piwheels.org/simple/blinker/blinker-1.9.0-py3-none-any.whl.metadata
+  Downloading https://www.piwheels.org/simple/blinker/blinker-1.9.0-py3-none-any.whl.metadata (1.6 kB)
+Collecting click>=8.1.3 (from Flask<4.0.0,>=3.1.3)
+  Obtaining dependency information for click>=8.1.3 from https://www.piwheels.org/simple/click/click-8.5.0-py3-none-any.whl.metadata
+  Downloading https://www.piwheels.org/simple/click/click-8.5.0-py3-none-any.whl.metadata (2.6 kB)
+Collecting itsdangerous>=2.2.0 (from Flask<4.0.0,>=3.1.3)
+  Obtaining dependency information for itsdangerous>=2.2.0 from https://www.piwheels.org/simple/itsdangerous/itsdangerous-2.2.0-py3-none-any.whl.metadata
+  Downloading https://www.piwheels.org/simple/itsdangerous/itsdangerous-2.2.0-py3-none-any.whl.metadata (1.9 kB)
+Collecting jinja2>=3.1.2 (from Flask<4.0.0,>=3.1.3)
+  Obtaining dependency information for jinja2>=3.1.2 from https://www.piwheels.org/simple/jinja2/jinja2-3.1.6-py3-none-any.whl.metadata
+  Downloading https://www.piwheels.org/simple/jinja2/jinja2-3.1.6-py3-none-any.whl.metadata (2.9 kB)
+Collecting markupsafe>=2.1.1 (from Flask<4.0.0,>=3.1.3)
+  Obtaining dependency information for markupsafe>=2.1.1 from https://files.pythonhosted.org/packages/00/07/575a68c754943058c78f30db02ee03a64b3c638586fba6a6dd56830b30a3/markupsafe-3.0.3-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata
+  Downloading markupsafe-3.0.3-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (2.7 kB)
+Collecting werkzeug>=3.1.0 (from Flask<4.0.0,>=3.1.3)
+  Obtaining dependency information for werkzeug>=3.1.0 from https://www.piwheels.org/simple/werkzeug/werkzeug-3.1.8-py3-none-any.whl.metadata
+  Downloading https://www.piwheels.org/simple/werkzeug/werkzeug-3.1.8-py3-none-any.whl.metadata (4.0 kB)
+Downloading https://www.piwheels.org/simple/flask/flask-3.1.3-py3-none-any.whl (103 kB)
+Downloading https://www.piwheels.org/simple/blinker/blinker-1.9.0-py3-none-any.whl (8.5 kB)
+Downloading https://www.piwheels.org/simple/click/click-8.5.0-py3-none-any.whl (125 kB)
+Downloading https://www.piwheels.org/simple/itsdangerous/itsdangerous-2.2.0-py3-none-any.whl (16 kB)
+Downloading https://www.piwheels.org/simple/jinja2/jinja2-3.1.6-py3-none-any.whl (134 kB)
+Downloading markupsafe-3.0.3-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (24 kB)
+Downloading https://www.piwheels.org/simple/werkzeug/werkzeug-3.1.8-py3-none-any.whl (226 kB)
+Installing collected packages: markupsafe, itsdangerous, click, blinker, werkzeug, jinja2, Flask
+  changing mode of /usr/local/bin/flask to 755
+
+ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
+types-flask-migrate 4.0 requires Flask-SQLAlchemy>=3.0.1, which is not installed.
+Successfully installed Flask-3.1.3 blinker-1.9.0 click-8.5.0 itsdangerous-2.2.0 jinja2-3.1.6 markupsafe-3.0.3 werkzeug-3.1.8
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+✓ Successfully installed: Flask>=3.1.3,<4.0.0
+
+[9/10] Installing: jsonschema>=4.20.0,<5.0.0
+  Output:
+    Collecting jsonschema<5.0.0,>=4.20.0
+      Downloading https://www.piwheels.org/simple/jsonschema/jsonschema-4.26.0-py3-none-any.whl.metadata (7.6 kB)
+    Collecting attrs>=22.2.0 (from jsonschema<5.0.0,>=4.20.0)
+      Downloading https://www.piwheels.org/simple/attrs/attrs-26.1.0-py3-none-any.whl.metadata (8.8 kB)
+    Collecting jsonschema-specifications>=2023.03.6 (from jsonschema<5.0.0,>=4.20.0)
+      Downloading https://www.piwheels.org/simple/jsonschema-specifications/jsonschema_specifications-2025.9.1-py3-none-any.whl.metadata (2.9 kB)
+    Collecting referencing>=0.28.4 (from jsonschema<5.0.0,>=4.20.0)
+      Downloading https://www.piwheels.org/simple/referencing/referencing-0.37.0-py3-none-any.whl.metadata (2.8 kB)
+    WARNING: Retrying (Retry(total=4, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ProtocolError('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))': /simple/rpds-py/
+    Collecting rpds-py>=0.25.0 (from jsonschema<5.0.0,>=4.20.0)
+      Downloading rpds_py-2026.6.3-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl.metadata (4.1 kB)
+    Downloading https://www.piwheels.org/simple/jsonschema/jsonschema-4.26.0-py3-none-any.whl (90 kB)
+    Downloading https://www.piwheels.org/simple/attrs/attrs-26.1.0-py3-none-any.whl (67 kB)
+    Downloading https://www.piwheels.org/simple/jsonschema-specifications/jsonschema_specifications-2025.9.1-py3-none-any.whl (18 kB)
+    Downloading https://www.piwheels.org/simple/referencing/referencing-0.37.0-py3-none-any.whl (26 kB)
+Using pip 25.1.1 from /usr/lib/python3/dist-packages/pip (python 3.13)
+Looking in indexes: https://pypi.org/simple, https://www.piwheels.org/simple
+Collecting jsonschema<5.0.0,>=4.20.0
+  Obtaining dependency information for jsonschema<5.0.0,>=4.20.0 from https://www.piwheels.org/simple/jsonschema/jsonschema-4.26.0-py3-none-any.whl.metadata
+  Downloading https://www.piwheels.org/simple/jsonschema/jsonschema-4.26.0-py3-none-any.whl.metadata (7.6 kB)
+Collecting attrs>=22.2.0 (from jsonschema<5.0.0,>=4.20.0)
+  Obtaining dependency information for attrs>=22.2.0 from https://www.piwheels.org/simple/attrs/attrs-26.1.0-py3-none-any.whl.metadata
+  Downloading https://www.piwheels.org/simple/attrs/attrs-26.1.0-py3-none-any.whl.metadata (8.8 kB)
+Collecting jsonschema-specifications>=2023.03.6 (from jsonschema<5.0.0,>=4.20.0)
+  Obtaining dependency information for jsonschema-specifications>=2023.03.6 from https://www.piwheels.org/simple/jsonschema-specifications/jsonschema_specifications-2025.9.1-py3-none-any.whl.metadata
+  Downloading https://www.piwheels.org/simple/jsonschema-specifications/jsonschema_specifications-2025.9.1-py3-none-any.whl.metadata (2.9 kB)
+Collecting referencing>=0.28.4 (from jsonschema<5.0.0,>=4.20.0)
+  Obtaining dependency information for referencing>=0.28.4 from https://www.piwheels.org/simple/referencing/referencing-0.37.0-py3-none-any.whl.metadata
+  Downloading https://www.piwheels.org/simple/referencing/referencing-0.37.0-py3-none-any.whl.metadata (2.8 kB)
+WARNING: Retrying (Retry(total=4, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ProtocolError('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))': /simple/rpds-py/
+Collecting rpds-py>=0.25.0 (from jsonschema<5.0.0,>=4.20.0)
+  Obtaining dependency information for rpds-py>=0.25.0 from https://files.pythonhosted.org/packages/9e/9b/069aa329940f8207615e091f5eedbbd40e1e15eac68a0790fd05ccdf796c/rpds_py-2026.6.3-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl.metadata
+  Downloading rpds_py-2026.6.3-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl.metadata (4.1 kB)
+Downloading https://www.piwheels.org/simple/jsonschema/jsonschema-4.26.0-py3-none-any.whl (90 kB)
+Downloading https://www.piwheels.org/simple/attrs/attrs-26.1.0-py3-none-any.whl (67 kB)
+Downloading https://www.piwheels.org/simple/jsonschema-specifications/jsonschema_specifications-2025.9.1-py3-none-any.whl (18 kB)
+Downloading https://www.piwheels.org/simple/referencing/referencing-0.37.0-py3-none-any.whl (26 kB)
+Downloading rpds_py-2026.6.3-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl (367 kB)
+Installing collected packages: rpds-py, attrs, referencing, jsonschema-specifications, jsonschema
+  changing mode of /usr/local/bin/jsonschema to 755
+
+Successfully installed attrs-26.1.0 jsonschema-4.26.0 jsonschema-specifications-2025.9.1 referencing-0.37.0 rpds-py-2026.6.3
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+✓ Successfully installed: jsonschema>=4.20.0,<5.0.0
+
+[10/10] Installing: packaging>=23.0,<27.0
+  Output:
+    Collecting packaging<27.0,>=23.0
+      Downloading https://www.piwheels.org/simple/packaging/packaging-26.3-py3-none-any.whl.metadata (3.6 kB)
+    Downloading https://www.piwheels.org/simple/packaging/packaging-26.3-py3-none-any.whl (129 kB)
+    Installing collected packages: packaging
+    Successfully installed packaging-26.3
+    WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+Using pip 25.1.1 from /usr/lib/python3/dist-packages/pip (python 3.13)
+Looking in indexes: https://pypi.org/simple, https://www.piwheels.org/simple
+Collecting packaging<27.0,>=23.0
+  Obtaining dependency information for packaging<27.0,>=23.0 from https://www.piwheels.org/simple/packaging/packaging-26.3-py3-none-any.whl.metadata
+  Downloading https://www.piwheels.org/simple/packaging/packaging-26.3-py3-none-any.whl.metadata (3.6 kB)
+Downloading https://www.piwheels.org/simple/packaging/packaging-26.3-py3-none-any.whl (129 kB)
+Installing collected packages: packaging
+Successfully installed packaging-26.3
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+✓ Successfully installed: packaging>=23.0,<27.0
+
+-----------------------------------------------
+Installation summary:
+  Installed: 10
+  Failed: 0
+  Total: 10
+
+✓ Project Python dependencies installed (10/10 successful)
+
+Installing web interface dependencies...
+Looking in indexes: https://pypi.org/simple, https://www.piwheels.org/simple
+Collecting flask<4.0.0,>=3.1.3 (from -r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 6))
+  Using cached https://www.piwheels.org/simple/flask/flask-3.1.3-py3-none-any.whl.metadata (3.2 kB)
+Collecting werkzeug<4.0.0,>=3.1.6 (from -r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 7))
+  Using cached https://www.piwheels.org/simple/werkzeug/werkzeug-3.1.8-py3-none-any.whl.metadata (4.0 kB)
+Collecting flask-limiter<4.0.0,>=3.5.0 (from -r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 8))
+  Using cached https://www.piwheels.org/simple/flask-limiter/flask_limiter-3.12-py3-none-any.whl.metadata (6.3 kB)
+Collecting flask-compress>=1.14 (from -r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 9))
+  Using cached https://www.piwheels.org/simple/flask-compress/flask_compress-1.25-py3-none-any.whl.metadata (11 kB)
+Collecting jinja2<4.0.0,>=3.1.6 (from -r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 10))
+  Using cached https://www.piwheels.org/simple/jinja2/jinja2-3.1.6-py3-none-any.whl.metadata (2.9 kB)
+Collecting markupsafe<4.0.0,>=2.1.0 (from -r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 11))
+  Using cached markupsafe-3.0.3-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (2.7 kB)
+Collecting Pillow<13.0.0,>=12.2.0 (from -r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 19))
+  Using cached pillow-12.3.0-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl.metadata (9.1 kB)
+Collecting psutil<7.0.0,>=6.0.0 (from -r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 22))
+  Using cached psutil-6.1.1-cp36-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl.metadata (22 kB)
+Collecting freetype-py<3.0.0,>=2.5.1 (from -r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 25))
+  Using cached freetype_py-2.5.1-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl.metadata (6.3 kB)
+Collecting numpy>=1.24.0 (from -r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 29))
+  Using cached numpy-2.5.3-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl.metadata (6.6 kB)
+Collecting requests<3.0.0,>=2.33.0 (from -r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 32))
+  Using cached https://www.piwheels.org/simple/requests/requests-2.34.2-py3-none-any.whl.metadata (4.8 kB)
+  DEPRECATION: Wheel filename 'pytz-2013d-py3-none-any.whl' is not correctly normalised. Future versions of pip will raise the following error:
+  Invalid wheel filename (invalid version): 'pytz-2013d-py3-none-any'
+  
+   pip 25.3 will enforce this behaviour change. A possible replacement is to rename the wheel to use a correctly normalised name (this may require updating the version in the project metadata). Discussion can be found at https://github.com/pypa/pip/issues/12938
+  DEPRECATION: Wheel filename 'pytz-2012j-py3-none-any.whl' is not correctly normalised. Future versions of pip will raise the following error:
+  Invalid wheel filename (invalid version): 'pytz-2012j-py3-none-any'
+  
+   pip 25.3 will enforce this behaviour change. A possible replacement is to rename the wheel to use a correctly normalised name (this may require updating the version in the project metadata). Discussion can be found at https://github.com/pypa/pip/issues/12938
+  DEPRECATION: Wheel filename 'pytz-2012h-py3-none-any.whl' is not correctly normalised. Future versions of pip will raise the following error:
+  Invalid wheel filename (invalid version): 'pytz-2012h-py3-none-any'
+  
+   pip 25.3 will enforce this behaviour change. A possible replacement is to rename the wheel to use a correctly normalised name (this may require updating the version in the project metadata). Discussion can be found at https://github.com/pypa/pip/issues/12938
+  DEPRECATION: Wheel filename 'pytz-2012g-py3-none-any.whl' is not correctly normalised. Future versions of pip will raise the following error:
+  Invalid wheel filename (invalid version): 'pytz-2012g-py3-none-any'
+  
+   pip 25.3 will enforce this behaviour change. A possible replacement is to rename the wheel to use a correctly normalised name (this may require updating the version in the project metadata). Discussion can be found at https://github.com/pypa/pip/issues/12938
+  DEPRECATION: Wheel filename 'pytz-2012f-py3-none-any.whl' is not correctly normalised. Future versions of pip will raise the following error:
+  Invalid wheel filename (invalid version): 'pytz-2012f-py3-none-any'
+  
+   pip 25.3 will enforce this behaviour change. A possible replacement is to rename the wheel to use a correctly normalised name (this may require updating the version in the project metadata). Discussion can be found at https://github.com/pypa/pip/issues/12938
+  DEPRECATION: Wheel filename 'pytz-2012d-py3-none-any.whl' is not correctly normalised. Future versions of pip will raise the following error:
+  Invalid wheel filename (invalid version): 'pytz-2012d-py3-none-any'
+  
+   pip 25.3 will enforce this behaviour change. A possible replacement is to rename the wheel to use a correctly normalised name (this may require updating the version in the project metadata). Discussion can be found at https://github.com/pypa/pip/issues/12938
+  DEPRECATION: Wheel filename 'pytz-2011n-py3-none-any.whl' is not correctly normalised. Future versions of pip will raise the following error:
+  Invalid wheel filename (invalid version): 'pytz-2011n-py3-none-any'
+  
+   pip 25.3 will enforce this behaviour change. A possible replacement is to rename the wheel to use a correctly normalised name (this may require updating the version in the project metadata). Discussion can be found at https://github.com/pypa/pip/issues/12938
+  DEPRECATION: Wheel filename 'pytz-2011k-py3-none-any.whl' is not correctly normalised. Future versions of pip will raise the following error:
+  Invalid wheel filename (invalid version): 'pytz-2011k-py3-none-any'
+  
+   pip 25.3 will enforce this behaviour change. A possible replacement is to rename the wheel to use a correctly normalised name (this may require updating the version in the project metadata). Discussion can be found at https://github.com/pypa/pip/issues/12938
+  DEPRECATION: Wheel filename 'pytz-2011j-py3-none-any.whl' is not correctly normalised. Future versions of pip will raise the following error:
+  Invalid wheel filename (invalid version): 'pytz-2011j-py3-none-any'
+  
+   pip 25.3 will enforce this behaviour change. A possible replacement is to rename the wheel to use a correctly normalised name (this may require updating the version in the project metadata). Discussion can be found at https://github.com/pypa/pip/issues/12938
+  DEPRECATION: Wheel filename 'pytz-2011h-py3-none-any.whl' is not correctly normalised. Future versions of pip will raise the following error:
+  Invalid wheel filename (invalid version): 'pytz-2011h-py3-none-any'
+  
+   pip 25.3 will enforce this behaviour change. A possible replacement is to rename the wheel to use a correctly normalised name (this may require updating the version in the project metadata). Discussion can be found at https://github.com/pypa/pip/issues/12938
+  DEPRECATION: Wheel filename 'pytz-2011g-py3-none-any.whl' is not correctly normalised. Future versions of pip will raise the following error:
+  Invalid wheel filename (invalid version): 'pytz-2011g-py3-none-any'
+  
+   pip 25.3 will enforce this behaviour change. A possible replacement is to rename the wheel to use a correctly normalised name (this may require updating the version in the project metadata). Discussion can be found at https://github.com/pypa/pip/issues/12938
+  DEPRECATION: Wheel filename 'pytz-2011e-py3-none-any.whl' is not correctly normalised. Future versions of pip will raise the following error:
+  Invalid wheel filename (invalid version): 'pytz-2011e-py3-none-any'
+  
+   pip 25.3 will enforce this behaviour change. A possible replacement is to rename the wheel to use a correctly normalised name (this may require updating the version in the project metadata). Discussion can be found at https://github.com/pypa/pip/issues/12938
+  DEPRECATION: Wheel filename 'pytz-2011d-py3-none-any.whl' is not correctly normalised. Future versions of pip will raise the following error:
+  Invalid wheel filename (invalid version): 'pytz-2011d-py3-none-any'
+  
+   pip 25.3 will enforce this behaviour change. A possible replacement is to rename the wheel to use a correctly normalised name (this may require updating the version in the project metadata). Discussion can be found at https://github.com/pypa/pip/issues/12938
+Collecting pytz<2025.0,>=2024.2 (from -r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 35))
+  Using cached https://www.piwheels.org/simple/pytz/pytz-2024.2-py3-none-any.whl.metadata (22 kB)
+Collecting spotipy<3.0.0,>=2.25.2 (from -r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 38))
+  Using cached https://www.piwheels.org/simple/spotipy/spotipy-2.26.0-py3-none-any.whl.metadata (5.1 kB)
+Collecting blinker>=1.9.0 (from flask<4.0.0,>=3.1.3->-r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 6))
+  Using cached https://www.piwheels.org/simple/blinker/blinker-1.9.0-py3-none-any.whl.metadata (1.6 kB)
+Collecting click>=8.1.3 (from flask<4.0.0,>=3.1.3->-r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 6))
+  Using cached https://www.piwheels.org/simple/click/click-8.5.0-py3-none-any.whl.metadata (2.6 kB)
+Collecting itsdangerous>=2.2.0 (from flask<4.0.0,>=3.1.3->-r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 6))
+  Using cached https://www.piwheels.org/simple/itsdangerous/itsdangerous-2.2.0-py3-none-any.whl.metadata (1.9 kB)
+Collecting limits>=3.13 (from flask-limiter<4.0.0,>=3.5.0->-r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 8))
+  Using cached https://www.piwheels.org/simple/limits/limits-5.8.0-py3-none-any.whl.metadata (10 kB)
+Collecting ordered-set<5,>4 (from flask-limiter<4.0.0,>=3.5.0->-r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 8))
+  Using cached https://www.piwheels.org/simple/ordered-set/ordered_set-4.1.0-py3-none-any.whl.metadata (5.3 kB)
+Collecting rich<14,>=12 (from flask-limiter<4.0.0,>=3.5.0->-r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 8))
+  Using cached https://www.piwheels.org/simple/rich/rich-13.9.4-py3-none-any.whl.metadata (18 kB)
+Collecting charset_normalizer<4,>=2 (from requests<3.0.0,>=2.33.0->-r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 32))
+  Using cached charset_normalizer-3.5.1-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (45 kB)
+Collecting idna<4,>=2.5 (from requests<3.0.0,>=2.33.0->-r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 32))
+  Using cached https://www.piwheels.org/simple/idna/idna-3.20-py3-none-any.whl.metadata (7.2 kB)
+Collecting urllib3<3,>=1.26 (from requests<3.0.0,>=2.33.0->-r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 32))
+  Using cached https://www.piwheels.org/simple/urllib3/urllib3-2.8.0-py3-none-any.whl.metadata (7.4 kB)
+Collecting certifi>=2023.5.7 (from requests<3.0.0,>=2.33.0->-r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 32))
+  Using cached https://www.piwheels.org/simple/certifi/certifi-2026.7.22-py3-none-any.whl.metadata (2.5 kB)
+Collecting redis>=3.5.3 (from spotipy<3.0.0,>=2.25.2->-r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 38))
+  Using cached https://www.piwheels.org/simple/redis/redis-8.1.0-py3-none-any.whl.metadata (16 kB)
+Collecting markdown-it-py>=2.2.0 (from rich<14,>=12->flask-limiter<4.0.0,>=3.5.0->-r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 8))
+  Using cached https://www.piwheels.org/simple/markdown-it-py/markdown_it_py-4.2.0-py3-none-any.whl.metadata (7.4 kB)
+Collecting pygments<3.0.0,>=2.13.0 (from rich<14,>=12->flask-limiter<4.0.0,>=3.5.0->-r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 8))
+  Using cached https://www.piwheels.org/simple/pygments/pygments-2.21.0-py3-none-any.whl.metadata (2.5 kB)
+Collecting brotli (from flask-compress>=1.14->-r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 9))
+  Using cached brotli-1.2.0-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (6.1 kB)
+Collecting backports.zstd (from flask-compress>=1.14->-r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 9))
+  Using cached backports_zstd-1.7.0-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (6.8 kB)
+Collecting deprecated>=1.2 (from limits>=3.13->flask-limiter<4.0.0,>=3.5.0->-r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 8))
+  Using cached https://www.piwheels.org/simple/deprecated/deprecated-1.3.1-py2.py3-none-any.whl.metadata (5.9 kB)
+Collecting packaging>=21 (from limits>=3.13->flask-limiter<4.0.0,>=3.5.0->-r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 8))
+  Using cached https://www.piwheels.org/simple/packaging/packaging-26.3-py3-none-any.whl.metadata (3.6 kB)
+Collecting typing-extensions (from limits>=3.13->flask-limiter<4.0.0,>=3.5.0->-r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 8))
+  Using cached https://www.piwheels.org/simple/typing-extensions/typing_extensions-4.16.0-py3-none-any.whl.metadata (3.3 kB)
+Collecting wrapt<3,>=1.10 (from deprecated>=1.2->limits>=3.13->flask-limiter<4.0.0,>=3.5.0->-r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 8))
+  Using cached wrapt-2.4.1-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (7.4 kB)
+Collecting mdurl~=0.1 (from markdown-it-py>=2.2.0->rich<14,>=12->flask-limiter<4.0.0,>=3.5.0->-r /home/ledpi/LEDMatrix/web_interface/requirements.txt (line 8))
+  Using cached https://www.piwheels.org/simple/mdurl/mdurl-0.1.2-py3-none-any.whl.metadata (1.6 kB)
+Using cached https://www.piwheels.org/simple/flask/flask-3.1.3-py3-none-any.whl (103 kB)
+Using cached https://www.piwheels.org/simple/werkzeug/werkzeug-3.1.8-py3-none-any.whl (226 kB)
+Using cached https://www.piwheels.org/simple/flask-limiter/flask_limiter-3.12-py3-none-any.whl (28 kB)
+Using cached https://www.piwheels.org/simple/jinja2/jinja2-3.1.6-py3-none-any.whl (134 kB)
+Using cached markupsafe-3.0.3-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (24 kB)
+Using cached pillow-12.3.0-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl (6.3 MB)
+Using cached psutil-6.1.1-cp36-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl (289 kB)
+Using cached freetype_py-2.5.1-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl (1.1 MB)
+Using cached https://www.piwheels.org/simple/requests/requests-2.34.2-py3-none-any.whl (73 kB)
+Using cached https://www.piwheels.org/simple/pytz/pytz-2024.2-py3-none-any.whl (507 kB)
+Using cached https://www.piwheels.org/simple/spotipy/spotipy-2.26.0-py3-none-any.whl (31 kB)
+Using cached charset_normalizer-3.5.1-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (240 kB)
+Using cached https://www.piwheels.org/simple/idna/idna-3.20-py3-none-any.whl (69 kB)
+Using cached https://www.piwheels.org/simple/ordered-set/ordered_set-4.1.0-py3-none-any.whl (7.6 kB)
+Using cached https://www.piwheels.org/simple/rich/rich-13.9.4-py3-none-any.whl (242 kB)
+Using cached https://www.piwheels.org/simple/pygments/pygments-2.21.0-py3-none-any.whl (1.3 MB)
+Using cached https://www.piwheels.org/simple/urllib3/urllib3-2.8.0-py3-none-any.whl (135 kB)
+Using cached https://www.piwheels.org/simple/flask-compress/flask_compress-1.25-py3-none-any.whl (11 kB)
+Using cached numpy-2.5.3-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl (15.7 MB)
+Using cached https://www.piwheels.org/simple/blinker/blinker-1.9.0-py3-none-any.whl (8.5 kB)
+Using cached https://www.piwheels.org/simple/certifi/certifi-2026.7.22-py3-none-any.whl (136 kB)
+Using cached https://www.piwheels.org/simple/click/click-8.5.0-py3-none-any.whl (125 kB)
+Using cached https://www.piwheels.org/simple/itsdangerous/itsdangerous-2.2.0-py3-none-any.whl (16 kB)
+Using cached https://www.piwheels.org/simple/limits/limits-5.8.0-py3-none-any.whl (60 kB)
+Using cached https://www.piwheels.org/simple/deprecated/deprecated-1.3.1-py2.py3-none-any.whl (11 kB)
+Using cached wrapt-2.4.1-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (235 kB)
+Using cached https://www.piwheels.org/simple/markdown-it-py/markdown_it_py-4.2.0-py3-none-any.whl (91 kB)
+Using cached https://www.piwheels.org/simple/mdurl/mdurl-0.1.2-py3-none-any.whl (10.0 kB)
+Using cached https://www.piwheels.org/simple/packaging/packaging-26.3-py3-none-any.whl (129 kB)
+Using cached https://www.piwheels.org/simple/redis/redis-8.1.0-py3-none-any.whl (560 kB)
+Using cached backports_zstd-1.7.0-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (477 kB)
+Using cached brotli-1.2.0-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (1.5 MB)
+Using cached https://www.piwheels.org/simple/typing-extensions/typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+Installing collected packages: pytz, brotli, wrapt, urllib3, typing-extensions, redis, pygments, psutil, Pillow, packaging, ordered-set, numpy, mdurl, markupsafe, itsdangerous, idna, freetype-py, click, charset_normalizer, certifi, blinker, backports.zstd, werkzeug, requests, markdown-it-py, jinja2, deprecated, spotipy, rich, limits, flask, flask-limiter, flask-compress
+
+ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
+types-flask-migrate 4.0 requires Flask-SQLAlchemy>=3.0.1, which is not installed.
+types-seaborn 0.13.2 requires matplotlib>=3.8; python_version >= "3.9", which is not installed.
+types-seaborn 0.13.2 requires pandas-stubs, which is not installed.
+Successfully installed Pillow-12.3.0 backports.zstd-1.7.0 blinker-1.9.0 brotli-1.2.0 certifi-2026.7.22 charset_normalizer-3.5.1 click-8.5.0 deprecated-1.3.1 flask-3.1.3 flask-compress-1.25 flask-limiter-3.12 freetype-py-2.5.1 idna-3.20 itsdangerous-2.2.0 jinja2-3.1.6 limits-5.8.0 markdown-it-py-4.2.0 markupsafe-3.0.3 mdurl-0.1.2 numpy-2.5.3 ordered-set-4.1.0 packaging-26.3 psutil-6.1.1 pygments-2.21.0 pytz-2024.2 redis-8.1.0 requests-2.34.2 rich-13.9.4 spotipy-2.26.0 typing-extensions-4.16.0 urllib3-2.8.0 werkzeug-3.1.8 wrapt-2.4.1
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+✓ Web interface dependencies installed
+
+Step 6: Building and installing rpi-rgb-led-matrix...
+-----------------------------------------------------
+Removing a leftover swapfile from a previous run: /var/swap.ledmatrix-install
+Adding a temporary 2048MB swapfile for the build: /var/swap.ledmatrix-install
+  This is removed automatically once the build finishes.
+✓ Temporary build swap active (2048MB; total swap is now 2047MB)
+Building in /var/tmp/ledmatrix-build (TMPDIR is memory-backed; keeping the build tree on disk)
+Installing rpi-rgb-led-matrix Python package (scikit-build-core + cmake)...
+  Build deps required: python-dev-is-python3 cmake
+  Compiling C++ with 1 parallel job(s)...
+  Deliberately serial to stay within this device's memory — expect 15-25 minutes.
+  ... still compiling (0m30s elapsed)
+  ... still compiling (1m00s elapsed)
+  ... still compiling (1m30s elapsed)
+  ... still compiling (2m00s elapsed)
+  ... still compiling (2m30s elapsed)
+  ... still compiling (3m00s elapsed)
+  ... still compiling (3m30s elapsed)
+Looking in indexes: https://pypi.org/simple, https://www.piwheels.org/simple
+Processing /home/ledpi/LEDMatrix/rpi-rgb-led-matrix-master
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: rgbmatrix
+  Building wheel for rgbmatrix (pyproject.toml): started
+  Building wheel for rgbmatrix (pyproject.toml): still running...
+  Building wheel for rgbmatrix (pyproject.toml): still running...
+  Building wheel for rgbmatrix (pyproject.toml): still running...
+  Building wheel for rgbmatrix (pyproject.toml): finished with status 'done'
+  Created wheel for rgbmatrix: filename=rgbmatrix-0.0.1+20260125-cp313-cp313-linux_aarch64.whl size=358597 sha256=f216dff735939721ccad090e70b90e2f322b7a07942860122a7f148ccfcee7fd
+  Stored in directory: /root/.cache/pip/wheels/ac/07/bc/50a0977808f58a52e7827f4d1d76dc86ede3a34eaa9782b04e
+Successfully built rgbmatrix
+Installing collected packages: rgbmatrix
+Successfully installed rgbmatrix-0.0.1+20260125
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+Removing the temporary build swapfile: /var/swap.ledmatrix-install
+Running rgbmatrix import test...
+Success! rgbmatrix version: 0.0.1+20260125
+✓ rpi-rgb-led-matrix installed and verified
+
+Step 7: Installing web interface dependencies...
+------------------------------------------------
+✓ Web interface dependencies already installed (marker file found)
+
+Step 7.5: Installing main LED Matrix service...
+------------------------------------------------
+Running main service installation/update...
+Installing LED Matrix Display Service for user: ledpi
+Using home directory: /home/ledpi
+Project root directory: /home/ledpi/LEDMatrix
+Enabling ledmatrix.service (main display) to start on boot...
+Created symlink '/etc/systemd/system/multi-user.target.wants/ledmatrix.service' → '/etc/systemd/system/ledmatrix.service'.
+Starting ledmatrix.service (main display)...
+Installing LEDMatrix Web Interface service (ledmatrix-web.service)...
+Reloading systemd daemon for web service...
+Enabling ledmatrix-web.service to start on boot...
+Created symlink '/etc/systemd/system/multi-user.target.wants/ledmatrix-web.service' → '/etc/systemd/system/ledmatrix-web.service'.
+Enabling ledmatrix-update-verify.path (automatic update health check)...
+Created symlink '/etc/systemd/system/multi-user.target.wants/ledmatrix-update-verify.path' → '/etc/systemd/system/ledmatrix-update-verify.path'.
+Starting ledmatrix-web.service...
+LEDMatrix Web Interface service (ledmatrix-web.service) installation complete.
+It will start based on the 'web_display_autostart' setting in config/config.json.
+Service status for main display (ledmatrix.service):
+● ledmatrix.service - LED Matrix Display Service
+     Loaded: loaded (/etc/systemd/system/ledmatrix.service; enabled; preset: enabled)
+     Active: active (running) since Sat 2026-09-19 21:39:46 EDT; 10s ago
+ Invocation: 175ec1447e454d21a7b5f8433252264c
+   Main PID: 4034 (python3)
+      Tasks: 7 (limit: 806)
+        CPU: 11.269s
+     CGroup: /system.slice/ledmatrix.service
+             └─4034 /usr/bin/python3 /home/ledpi/LEDMatrix/run.py
+
+Sep 19 21:39:53 ledpi ledmatrix[4034]: 2026-09-19 21:39:53.747 - INFO - src.display_controller - Plugin system initialized in 2.350 seconds
+Sep 19 21:39:53 ledpi ledmatrix[4034]: 2026-09-19 21:39:53.750 - INFO - src.display_controller - Total available modes: 1
+Sep 19 21:39:53 ledpi ledmatrix[4034]: 2026-09-19 21:39:53.751 - INFO - src.display_controller - Available modes: ['web_ui_info']
+Sep 19 21:39:53 ledpi ledmatrix[4034]: 2026-09-19 21:39:53.755 - INFO - src.display_controller - Performing initial plugin data update...
+Sep 19 21:39:53 ledpi ledmatrix[4034]: 2026-09-19 21:39:53.759 - INFO - src.display_controller - Initial plugin update completed in 0.003 seconds
+Sep 19 21:39:53 ledpi ledmatrix[4034]: 2026-09-19 21:39:53.760 - INFO - src.display_controller - DisplayController initialization completed in 3.410 seconds
+Sep 19 21:39:53 ledpi ledmatrix[4034]: 2026-09-19 21:39:53.762 - INFO - src.display_controller - Starting display with cached data (fast startup mode)
+Sep 19 21:39:53 ledpi ledmatrix[4034]: 2026-09-19 21:39:53.763 - INFO - src.display_controller - Initial mode set to: web_ui_info (index: 0, total modes: 1)
+Sep 19 21:39:53 ledpi ledmatrix[4034]: 2026-09-19 21:39:53.769 - INFO - src.display_controller - Processing mode: web_ui_info (1 available)
+Sep 19 21:39:53 ledpi ledmatrix[4034]: 2026-09-19 21:39:53.799 - INFO - src.display_controller - FPS check for web_ui_info - has_enable_scrolling: False, enable_scrolling_value: False, needs_high_fps: False
+Service status for web interface (ledmatrix-web.service):
+● ledmatrix-web.service - LED Matrix Web Interface Service
+     Loaded: loaded (/etc/systemd/system/ledmatrix-web.service; enabled; preset: enabled)
+     Active: active (running) since Sat 2026-09-19 21:39:56 EDT; 406ms ago
+ Invocation: 6e115d151c2145b6b07572db40b0fa8e
+   Main PID: 4363 (python3)
+      Tasks: 1 (limit: 806)
+        CPU: 357ms
+     CGroup: /system.slice/ledmatrix-web.service
+             └─4363 /usr/bin/python3 /home/ledpi/LEDMatrix/scripts/utils/start_web_conditionally.py
+
+Sep 19 21:39:56 ledpi systemd[1]: Started ledmatrix-web.service - LED Matrix Web Interface Service.
+
+LED Matrix Services have been processed.
+
+To stop the main display when you SSH in:
+  sudo systemctl stop ledmatrix.service
+To stop the web interface:
+  sudo systemctl stop ledmatrix-web.service
+
+To check if the main display service is running:
+  sudo systemctl status ledmatrix.service
+To check if the web interface service is running:
+  sudo systemctl status ledmatrix-web.service
+
+To restart the main display service:
+  sudo systemctl restart ledmatrix.service
+To restart the web interface service:
+  sudo systemctl restart ledmatrix-web.service
+
+To view logs for the main display:
+  journalctl -u ledmatrix.service
+To view logs for the web interface:
+  journalctl -u ledmatrix-web.service
+
+To disable autostart for the main display:
+  sudo systemctl disable ledmatrix.service
+To disable autostart for the web interface:
+  sudo systemctl disable ledmatrix-web.service
+✓ Main LED Matrix service installed/updated
+Configuring Python capabilities for hardware timing...
+Setting cap_sys_nice on /usr/bin/python3.13 (Python 3.13)...
+✓ Python 3.13 capabilities configured (/usr/bin/python3.13)
+
+Step 8: Installing web interface service...
+-------------------------------------------
+✓ Web interface service already present with correct paths
+
+Step 8.1: Setting systemd unit file permissions...
+-----------------------------------------------
+✓ Systemd unit file permissions set
+
+Step 8.5: Installing WiFi monitor service...
+---------------------------------------------
+Installing/updating WiFi monitor service...
+Installing LED Matrix WiFi Monitor Service for user: ledpi
+Using home directory: /home/ledpi
+Project root directory: /home/ledpi/LEDMatrix
+
+Checking for required packages...
+Installing required packages for WiFi setup:
+  - hostapd
+
+
+WARNING: apt does not have a stable CLI interface. Use with caution in scripts.
+
+Hit:1 http://deb.debian.org/debian trixie InRelease
+Hit:2 http://deb.debian.org/debian trixie-updates InRelease
+Hit:3 http://deb.debian.org/debian-security trixie-security InRelease
+Get:4 https://pkgs.tailscale.com/stable/debian trixie InRelease
+Hit:5 http://archive.raspberrypi.com/debian trixie InRelease
+Fetched 6,650 B in 1s (7,001 B/s)
+Reading package lists...
+Building dependency tree...
+Reading state information...
+All packages are up to date.
+
+WARNING: apt does not have a stable CLI interface. Use with caution in scripts.
+
+Reading package lists...
+Building dependency tree...
+Reading state information...
+Installing:
+  hostapd
+
+Summary:
+  Upgrading: 0, Installing: 1, Removing: 0, Not Upgrading: 0
+  Download size: 1,043 kB
+  Space needed: 2,417 kB / 24.5 GB available
+
+Get:1 http://archive.raspberrypi.com/debian trixie/main arm64 hostapd arm64 2:2.10-24+rpt1 [1,043 kB]
+Fetched 1,043 kB in 1s (856 kB/s)
+Selecting previously unselected package hostapd.
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 75429 files and directories currently installed.)
+Preparing to unpack .../hostapd_2%3a2.10-24+rpt1_arm64.deb ...
+Unpacking hostapd (2:2.10-24+rpt1) ...
+Setting up hostapd (2:2.10-24+rpt1) ...
+Created symlink '/etc/systemd/system/multi-user.target.wants/hostapd.service' → '/usr/lib/systemd/system/hostapd.service'.
+Created symlink '/etc/systemd/system/hostapd.service' → '/dev/null'.
+Processing triggers for man-db (2.13.1-1) ...
+✓ Package installation completed
+
+Creating systemd service file...
+
+Checking WiFi connection status...
+✓ WiFi is connected to: WhiteSky-KingstonSouthEnd
+
+Reloading systemd...
+Enabling WiFi monitor service to start on boot...
+Created symlink '/etc/systemd/system/multi-user.target.wants/ledmatrix-wifi-monitor.service' → '/etc/systemd/system/ledmatrix-wifi-monitor.service'.
+Starting WiFi monitor service...
+
+Checking service status...
+✓ WiFi monitor service is running
+
+WiFi Monitor Service installation complete!
+
+Useful commands:
+  sudo systemctl status ledmatrix-wifi-monitor  # Check status
+  sudo systemctl restart ledmatrix-wifi-monitor  # Restart service
+  sudo journalctl -u ledmatrix-wifi-monitor -f  # View logs
+
+✓ WiFi monitor service installation completed
+⚠ WiFi monitor service file exists but not registered with systemd
+
+Step 9: Configuring web interface permissions...
+------------------------------------------------
+Adding user to systemd-journal group...
+Adding user to adm group...
+User ledpi already in adm
+✓ User added to required groups
+
+Step 10: Configuring passwordless sudo access...
+------------------------------------------------
+Creating sudoers configuration...
+Installing/updating sudoers configuration...
+✓ Passwordless sudo access configured
+
+Step 10.1: Configuring WiFi management permissions...
+-----------------------------------------------------
+Configuring WiFi management permissions...
+Configuring WiFi management permissions for LED Matrix Web Interface...
+Detected web interface user: ledpi
+Command paths:
+  nmcli: /usr/bin/nmcli
+  systemctl: /usr/bin/systemctl
+
+Step 1: Configuring sudo permissions for nmcli...
+iptables v1.8.11 (nf_tables): no command specified
+Try `iptables -h' or 'iptables --help' for more information.
+/home/ledpi/LEDMatrix/scripts/install/configure_wifi_permissions.sh: line 94: NOPASSWD:: command not found
+Generated sudoers configuration:
+--------------------------------
+# LED Matrix WiFi Management passwordless sudo configuration
+# This allows the web interface user to run nmcli commands without a password
+
+# Allow ledpi to run nmcli commands without a password for WiFi management
+ledpi ALL=(ALL) NOPASSWD: /usr/bin/nmcli device wifi connect *
+ledpi ALL=(ALL) NOPASSWD: /usr/bin/nmcli device wifi disconnect *
+ledpi ALL=(ALL) NOPASSWD: /usr/bin/nmcli device disconnect *
+ledpi ALL=(ALL) NOPASSWD: /usr/bin/nmcli device connect *
+ledpi ALL=(ALL) NOPASSWD: /usr/bin/nmcli radio wifi on
+ledpi ALL=(ALL) NOPASSWD: /usr/bin/nmcli radio wifi off
+ledpi ALL=(ALL) NOPASSWD: /usr/bin/systemctl start hostapd
+ledpi ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop hostapd
+ledpi ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart hostapd
+ledpi ALL=(ALL) NOPASSWD: /usr/bin/systemctl start dnsmasq
+ledpi ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop dnsmasq
+ledpi ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart dnsmasq
+ledpi ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart NetworkManager
+# The captive portal turns IP forwarding on while the access point is up and
+# restores the previous value when it comes down (wifi_manager._setup_iptables_
+# redirect / _teardown_iptables_redirect). Without this rule that sudo call
+# needs a password, so forwarding stays off and clients associate to the AP but
+# cannot route. It goes unnoticed on a stock Raspberry Pi image, where
+# /etc/sudoers.d/010_pi-nopasswd grants the default user blanket NOPASSWD and
+# masks every gap in this file -- it only bites once that blanket rule is
+# removed.
+ledpi ALL=(ALL) NOPASSWD: /usr/sbin/sysctl -w net.ipv4.ip_forward=0
+ledpi ALL=(ALL) NOPASSWD: /usr/sbin/sysctl -w net.ipv4.ip_forward=1
+# The portal's redirect lives in its own nftables table, created when the AP
+# comes up and deleted when it goes down, and the radio has to be unblocked
+# before the AP can start at all. Same story as the sysctl rules above: called
+# with sudo, never granted here, and invisible on a stock Pi image.
+ledpi ALL=(ALL) NOPASSWD: /usr/sbin/nft add table ip ledmatrix
+ledpi ALL=(ALL) NOPASSWD: /usr/sbin/nft delete table ip ledmatrix
+ledpi ALL=(ALL) NOPASSWD: /usr/sbin/rfkill unblock wifi
+# NetworkManager's dnsmasq drop-in directory, exact path.
+ledpi ALL=(ALL) NOPASSWD: /usr/bin/mkdir -p /etc/NetworkManager/dnsmasq-shared.d
+#
+# iptables is deliberately NOT granted here. Its rules are built from the live
+# interface name and port, so a rule covering them needs a trailing wildcard --
+# and  runs that path as root, so
+#  is a root shell for the web user by another name. That
+# is a worse outcome than the gap it would close, which today is masked anyway
+# by the blanket NOPASSWD rule on stock Pi images.
+#
+# Closing it safely means a wrapper script that builds the rules itself and
+# takes only an interface and a port, granted the way safe_plugin_rm.sh already
+# is. That belongs in its own change rather than being smuggled into this one.
+
+# Allow copying hostapd and dnsmasq config files into place
+ledpi ALL=(ALL) NOPASSWD: /usr/bin/cp /tmp/hostapd.conf /etc/hostapd/hostapd.conf
+ledpi ALL=(ALL) NOPASSWD: /usr/bin/cp /tmp/dnsmasq.conf /etc/dnsmasq.d/ledmatrix-captive.conf
+ledpi ALL=(ALL) NOPASSWD: /usr/bin/rm -f /etc/dnsmasq.d/ledmatrix-captive.conf
+--------------------------------
+
+Applying sudoers configuration...
+✓ Sudoers configuration applied successfully!
+
+Step 2: Configuring PolicyKit permissions for NetworkManager...
+Generated PolicyKit rule:
+--------------------------------
+// LED Matrix WiFi Management PolicyKit rules
+// This allows the web interface user to control NetworkManager without authentication
+
+polkit.addRule(function(action, subject) {
+    if (action.id.indexOf("org.freedesktop.NetworkManager.") == 0 && 
+        subject.user == "ledpi") {
+        return polkit.Result.YES;
+    }
+});
+--------------------------------
+
+Applying PolicyKit rule...
+✓ PolicyKit rule applied successfully!
+
+Step 3: Testing permissions...
+✓ nmcli device status - OK
+
+Configuration complete!
+
+The web interface user (ledpi) now has:
+- Passwordless sudo access to nmcli commands
+- PolicyKit permissions to control NetworkManager
+
+You may need to restart the web interface service for changes to take effect:
+  sudo systemctl restart ledmatrix-web.service
+
+Or if running manually, restart your Flask application.
+✓ WiFi management permissions configured
+
+Step 11: Setting proper file ownership...
+----------------------------------------
+Setting project file ownership (excluding plugin directories)...
+✓ Config file permissions set
+✓ Secrets file owned by the web service user (ledpi:ledmatrix, mode 640)
+Re-applying plugin directory permissions...
+✓ File ownership configured
+
+Step 11.1: Normalizing project file and directory permissions...
+--------------------------------------------------------------
+✓ Project file permissions normalized
+
+Step 12: Sound module configuration...
+-------------------------------------
+Removing potential conflicting services (bluetooth and others)...
+Reading package lists...
+Building dependency tree...
+Reading state information...
+Package 'pigpio' is not installed, so not removed
+Package 'pi-bluetooth' is not installed, so not removed
+Package 'triggerhappy' is not installed, so not removed
+The following packages will be REMOVED:
+  bluez bluez-firmware
+0 upgraded, 0 newly installed, 2 to remove and 0 not upgraded.
+After this operation, 6,188 kB disk space will be freed.
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 75457 files and directories currently installed.)
+Removing bluez (5.82-1.1+rpt2) ...
+Removing bluez-firmware (1.2-13+rpt2) ...
+Processing triggers for dbus (1.16.2-2) ...
+Processing triggers for man-db (2.13.1-1) ...
+✓ Unnecessary services removed (or not present)
+Ensuring snd_bcm2835 is blacklisted in /etc/modprobe.d/blacklist-rgb-matrix.conf...
+Updating initramfs...
+update-initramfs: Generating /boot/initrd.img-6.18.50+rpt-rpi-v8
+'/boot/initrd.img-6.18.50+rpt-rpi-v8' -> '/boot/firmware/initramfs8'
+update-initramfs: Generating /boot/initrd.img-6.18.50+rpt-rpi-2712
+'/boot/initrd.img-6.18.50+rpt-rpi-2712' -> '/boot/firmware/initramfs_2712'
+✓ Sound module configuration applied
+
+Step 13: Applying performance optimizations...
+---------------------------------------------
+Adding isolcpus=3 to /boot/firmware/cmdline.txt...
+Adding cgroup_enable=memory cgroup_memory=1 to /boot/firmware/cmdline.txt...
+  Takes effect after reboot. Verify with:
+    grep memory /sys/fs/cgroup/cgroup.controllers
+Enabling persistent journald storage...
+  Persistent journald storage active
+Disabling onboard audio in /boot/firmware/config.txt...
+✓ Performance optimizations applied
+
+Step 14: Testing the installation...
+----------------------------------
+Testing sudo access...
+✓ Sudo access test passed
+Testing journal access...
+✓ Journal access test passed
+Checking service status...
+✓ Main LED Matrix service is running
+✓ Web interface service is running
+
+A reboot is recommended to apply kernel and audio changes. Reboot now? (y/N): 
+Rebooting now...
+==========================================
+Installation Complete!
+==========================================
+
+==========================================
+Network Status & Access Information
+==========================================
+
+Current IP Addresses:

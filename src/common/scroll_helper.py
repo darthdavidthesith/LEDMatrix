@@ -26,7 +26,7 @@ import numpy as np
 # How often the frame-stats line is emitted, and therefore also the ceiling
 # on a believable frame time: a scroll that renders at all cannot take this
 # long over one frame, so a sample this large is an idle gap between scrolls.
-FPS_LOG_INTERVAL = 5.0
+FPS_LOG_INTERVAL = 30.0
 
 
 def frame_stats(frame_times: list) -> Dict[str, Any]:

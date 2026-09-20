@@ -1,7 +1,7 @@
 {
   "id": "football-scoreboard",
   "name": "Football Scoreboard",
-  "version": "3.10.4",
+  "version": "3.10.5",
   "update_interval": 60,
   "author": "ChuckBuilds",
   "class_name": "FootballScoreboardPlugin",
@@ -25,6 +25,12 @@
     "ncaa_fb_live"
   ],
   "versions": [
+    {
+      "version": "3.10.5",
+      "released": "2026-09-20",
+      "ledmatrix_min_version": "3.4.0",
+      "notes": "Live scroll strips now rebuild off the display thread. Down/distance, possession, red-zone, timeout, and scoring-banner changes remain visible without holding the current marquee frame during card rendering; completed replacement strips are swapped in while preserving scroll position."
+    },
     {
       "version": "3.10.4",
       "released": "2026-09-16",

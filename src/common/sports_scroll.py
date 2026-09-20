@@ -508,6 +508,55 @@ class SportsScrollDisplayManager:
             self._current_game_type = game_type
         return success
 
+    def prepare_detached(
+        self,
+        games: List[Dict],
+        game_type: str,
+        leagues: List[str],
+        rankings_cache: Optional[Dict[str, int]] = None,
+    ) -> Optional[SportsScrollDisplay]:
+        """Build a replacement strip without mutating the active display."""
+        active = self.get_scroll_display(game_type)
+        replacement = self.display_class(
+            self.display_manager,
+            self.config,
+            self.logger,
+            global_config=self.global_config,
+        )
+        replacement._logo_cache = active._logo_cache
+        replacement._separator_icons = active._separator_icons
+        try:
+            if not replacement.prepare_scroll_content(
+                games, game_type, leagues, rankings_cache
+            ):
+                return None
+        except Exception:
+            self.logger.exception(
+                "Error preparing detached scroll content for game_type=%s",
+                game_type,
+            )
+            return None
+        return replacement
+
+    def install_prepared(
+        self, game_type: str, replacement: SportsScrollDisplay
+    ) -> None:
+        """Atomically make a detached strip active, preserving its position."""
+        active = self._scroll_displays.get(game_type)
+        if active is not None:
+            old_helper = active.scroll_helper
+            new_helper = replacement.scroll_helper
+            new_helper.scroll_position = min(
+                old_helper.scroll_position,
+                max(new_helper.total_scroll_width - 1, 0),
+            )
+            new_helper.total_distance_scrolled = (
+                old_helper.total_distance_scrolled
+            )
+            new_helper.scroll_complete = False
+        self._scroll_displays[game_type] = replacement
+        self._current_game_type = game_type
+
     def display_frame(self, game_type: Optional[str] = None) -> bool:
         """Advance the active strip (or a named one) by one frame."""
         game_type = game_type or self._current_game_type

@@ -27,10 +27,12 @@ This replaces the previous "sticky manager" approach which prevented league rota
 and made it difficult to ensure both leagues were displayed.
 """
 
+import copy
 import json
 import logging
 import os
 from contextlib import contextmanager
+import queue
 import threading
 import time
 from typing import Dict, Any, Set, Optional, Tuple, List
@@ -208,6 +210,8 @@ class FootballScoreboardPlugin(BasePlugin if BasePlugin else object):
         self._vegas_signature = None
         # Seconds the last strip render took, per mode; feeds the duty-cycle cap.
         self._live_scroll_rebuild_cost = {}
+        self._live_scroll_rebuild_threads = {}
+        self._live_scroll_rebuild_ready = queue.Queue()
         self._scroll_active_league: Dict[str, str] = {}  # {game_type: league currently prepared}
 
         # Enable high-FPS mode for scroll display (allows 100+ FPS scrolling)
@@ -1597,6 +1601,42 @@ class FootballScoreboardPlugin(BasePlugin if BasePlugin else object):
     def _fingerprint_games(cls, games) -> tuple:
         return tuple(sorted(cls._live_scroll_fields(g) for g in (games or [])))
 
+    @staticmethod
+    def _describe_live_scroll_changes(before, after) -> str:
+        """Describe the fields that changed between two live fingerprints."""
+        def indexed(fingerprint):
+            result = {}
+            for fields in fingerprint:
+                values = dict(fields)
+                result[values.get("id", "?")] = values
+            return result
+
+        before_games = indexed(before)
+        after_games = indexed(after)
+        changes = []
+
+        for game_id in sorted(set(before_games) | set(after_games)):
+            old = before_games.get(game_id)
+            new = after_games.get(game_id)
+            if old is None:
+                changes.append("%s added" % game_id)
+                continue
+            if new is None:
+                changes.append("%s removed" % game_id)
+                continue
+
+            changed_fields = []
+            for field in sorted(set(old) | set(new)):
+                if old.get(field) != new.get(field):
+                    changed_fields.append(
+                        "%s=%r -> %r" %
+                        (field, old.get(field), new.get(field))
+                    )
+            if changed_fields:
+                changes.append("%s: %s" % (game_id, ", ".join(changed_fields)))
+
+        return "; ".join(changes) or "unknown change"
+
     def _live_scroll_fingerprint(self, league=None) -> tuple:
         games = []
         for manager in self._live_scroll_managers(league):
@@ -1616,7 +1656,8 @@ class FootballScoreboardPlugin(BasePlugin if BasePlugin else object):
         known = self._live_scroll_fingerprints.get(scroll_key)
         if known is None:
             return False                      # nothing built yet; normal path
-        if self._live_scroll_fingerprint(league) == known:
+        current = self._live_scroll_fingerprint(league)
+        if current == known:
             return False
         last = self._live_scroll_rebuilt_at.get(scroll_key, 0.0)
         cost = self._live_scroll_rebuild_cost.get(scroll_key, 0.0)
@@ -1624,6 +1665,11 @@ class FootballScoreboardPlugin(BasePlugin if BasePlugin else object):
                     cost * self.LIVE_SCROLL_REBUILD_DUTY_DIVISOR)
         if time.time() - last < floor:
             return False                      # deferred, not dropped
+        self.logger.info(
+            "[Scroll] Live change detected for %s: %s",
+            scroll_key,
+            self._describe_live_scroll_changes(known, current),
+        )
         return True
 
     def _note_live_scroll_built(self, scroll_key, mode_type, fingerprint=None,
@@ -1649,6 +1695,68 @@ class FootballScoreboardPlugin(BasePlugin if BasePlugin else object):
             fingerprint if fingerprint is not None
             else self._live_scroll_fingerprint(league))
         self._live_scroll_rebuilt_at[scroll_key] = time.time()
+
+    def _start_live_scroll_rebuild(self, scroll_key, mode_type, games,
+                                   leagues, rankings, fingerprint) -> None:
+        """Render a changed live strip away from the display thread."""
+        thread = self._live_scroll_rebuild_threads.get(scroll_key)
+        if thread is not None and thread.is_alive():
+            return
+
+        games_snapshot = copy.deepcopy(games)
+        rankings_snapshot = copy.deepcopy(rankings) if rankings else rankings
+
+        def build() -> None:
+            started = time.time()
+            try:
+                replacement = self._scroll_manager.prepare_detached(
+                    games_snapshot, mode_type, leagues, rankings_snapshot
+                )
+            except Exception:
+                self.logger.exception(
+                    "[Scroll] Background live strip rebuild failed for %s",
+                    scroll_key,
+                )
+                replacement = None
+            self._live_scroll_rebuild_ready.put(
+                (scroll_key, mode_type, replacement, fingerprint,
+                 time.time() - started)
+            )
+
+        thread = threading.Thread(
+            target=build,
+            daemon=True,
+            name="LiveScrollRebuild-%s" % scroll_key,
+        )
+        self._live_scroll_rebuild_threads[scroll_key] = thread
+        thread.start()
+
+    def _install_ready_live_scroll_rebuilds(self) -> None:
+        """Install completed worker builds from the display thread."""
+        while True:
+            try:
+                scroll_key, mode_type, replacement, fingerprint, cost = (
+                    self._live_scroll_rebuild_ready.get_nowait()
+                )
+            except queue.Empty:
+                return
+            if replacement is None:
+                self.logger.warning(
+                    "[Scroll] Background live strip rebuild failed for %s",
+                    scroll_key,
+                )
+                continue
+            self._scroll_manager.install_prepared(mode_type, replacement)
+            self._live_scroll_rebuild_cost[scroll_key] = cost
+            self._note_live_scroll_built(scroll_key, mode_type, fingerprint)
+            self._scroll_prepared[scroll_key] = True
+            self._scroll_active[scroll_key] = True
+            self.logger.info(
+                "[Scroll] Live card changed; installed rebuilt %s strip without "
+                "blocking the display loop at position %d",
+                mode_type,
+                int(replacement.scroll_helper.scroll_position),
+            )
 
     @contextmanager
     def _preserving_scroll_position(self, mode_type, active, scroll_key=None):
@@ -1713,15 +1821,16 @@ class FootballScoreboardPlugin(BasePlugin if BasePlugin else object):
         # it now, not when the cycle ends -- see _live_scroll_needs_rebuild().
         # Refresh before fingerprinting, not after -- the rebuild
         # decision below is computed from exactly this data.
+        self._install_ready_live_scroll_rebuilds()
         self._refresh_live_scroll_managers()
         rebuild_for_live = self._live_scroll_needs_rebuild(scroll_key, mode_type)
         if rebuild_for_live or not self._scroll_prepared.get(scroll_key, False):
             # Update managers first to get latest game data
-            if self.nfl_enabled:
+            if not rebuild_for_live and self.nfl_enabled:
                 nfl_manager = self._get_manager_for_league_mode('nfl', mode_type)
                 if nfl_manager:
                     self._ensure_manager_updated(nfl_manager)
-            if self.ncaa_fb_enabled:
+            if not rebuild_for_live and self.ncaa_fb_enabled:
                 ncaa_manager = self._get_manager_for_league_mode('ncaa_fb', mode_type)
                 if ncaa_manager:
                     self._ensure_manager_updated(ncaa_manager)
@@ -1749,6 +1858,14 @@ class FootballScoreboardPlugin(BasePlugin if BasePlugin else object):
             # What the managers hold right now -- this is what the render
             # below draws, so it is what the strip must be recorded as showing.
             pending_live_fingerprint = self._live_scroll_fingerprint(None)
+
+            if rebuild_for_live and self._scroll_active.get(scroll_key, False):
+                self._start_live_scroll_rebuild(
+                    scroll_key, mode_type, games, leagues, rankings,
+                    pending_live_fingerprint,
+                )
+                return self._scroll_manager.display_frame(mode_type)
+
             with self._preserving_scroll_position(mode_type, rebuild_for_live, scroll_key):
                 success = self._scroll_manager.prepare_and_display(
                     games, mode_type, leagues, rankings

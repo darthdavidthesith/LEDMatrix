@@ -80,6 +80,9 @@ class _Stub:
     _live_scroll_managers = Plugin._live_scroll_managers
     _live_scroll_fields = Plugin._live_scroll_fields
     _fingerprint_games = Plugin._fingerprint_games
+    _describe_live_scroll_changes = staticmethod(
+        Plugin._describe_live_scroll_changes
+    )
     _live_scroll_fingerprint = Plugin._live_scroll_fingerprint
     _live_scroll_needs_rebuild = Plugin._live_scroll_needs_rebuild
     _note_live_scroll_built = Plugin._note_live_scroll_built

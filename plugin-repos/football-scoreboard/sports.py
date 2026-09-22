@@ -1511,6 +1511,21 @@ class SportsCore(SportsCoreSharedMixin, ABC):
 
         return ""
 
+    @staticmethod
+    def _parse_espn_datetime(date_str: Optional[str]) -> Optional[datetime]:
+        """Parse an ESPN event's ISO "date" string to a UTC-aware datetime."""
+        if not date_str:
+            return None
+        try:
+            if date_str.endswith('Z'):
+                date_str = date_str.replace('Z', '+00:00')
+            dt = datetime.fromisoformat(date_str)
+            if dt.tzinfo is None:
+                return dt.replace(tzinfo=pytz.UTC)
+            return dt.astimezone(pytz.UTC)
+        except ValueError:
+            return None
+
     def _extract_game_details_common(
         self, game_event: Dict
     ) -> tuple[Dict | None, Dict | None, Dict | None, Dict | None, Dict | None]:
@@ -1608,11 +1623,20 @@ class SportsCore(SportsCoreSharedMixin, ABC):
             if away_record in {"0-0", "0-0-0"}:
                 away_record = ""
 
+            # ESPN's own week/season-phase for this event (e.g. {"number": 2},
+            # {"type": 2, "slug": "regular-season"}) -- used to filter "recent"
+            # by matchweek instead of a rolling day count, so last week's
+            # Monday nighter doesn't linger once this week's games start.
+            week_info = game_event.get("week") or {}
+            season_info = game_event.get("season") or {}
+
             details = {
                 "id": game_event.get("id"),
                 "game_time": game_time,
                 "game_date": game_date,
                 "start_time_utc": start_time_utc,
+                "week_number": week_info.get("number"),
+                "season_type": season_info.get("type"),
                 "status_text": status["type"][
                     "shortDetail"
                 ],  # e.g., "Final", "7:30 PM", "Q1 12:34"
@@ -3090,12 +3114,35 @@ class SportsRecent(SportsRecentSharedMixin, SportsCore):
                 f"({lookback_days} days ago)"
             )
 
+            # Current (season_type, week_number), taken from whichever fetched
+            # game starts closest to now. The day-count cutoff above is a
+            # coarse safety net (and the only option when ESPN omits week
+            # data); this pins "recent" to the current matchweek so last
+            # week's Monday nighter drops off the moment this week's games
+            # start, instead of lingering for the rest of lookback_days.
+            current_week_ctx = None
+            best_diff = None
+            for event in events:
+                game_time = self._parse_espn_datetime(event.get("date"))
+                week_number = (event.get("week") or {}).get("number")
+                season_type = (event.get("season") or {}).get("type")
+                if game_time is None or week_number is None or season_type is None:
+                    continue
+                diff = abs((game_time - now).total_seconds())
+                if best_diff is None or diff < best_diff:
+                    best_diff = diff
+                    current_week_ctx = (season_type, week_number)
+
             # Process games and filter for final games, date range & favorite teams
             processed_games = []
             for event in events:
                 game = self._extract_game_details(event)
                 if not game:
                     continue
+                if current_week_ctx is not None:
+                    game_week_ctx = (game.get("season_type"), game.get("week_number"))
+                    if None not in game_week_ctx and game_week_ctx != current_week_ctx:
+                        continue
                 
                 # Check if game appears finished even if not marked as "post" yet
                 # This handles cases where API hasn't updated status yet

@@ -1,7 +1,7 @@
 {
   "id": "football-scoreboard",
   "name": "Football Scoreboard",
-  "version": "3.10.5",
+  "version": "3.10.6",
   "update_interval": 60,
   "author": "ChuckBuilds",
   "class_name": "FootballScoreboardPlugin",
@@ -25,6 +25,12 @@
     "ncaa_fb_live"
   ],
   "versions": [
+    {
+      "version": "3.10.6",
+      "released": "2026-09-21",
+      "ledmatrix_min_version": "3.4.0",
+      "notes": "Recent games are now filtered to the current NFL/NCAAFB week (ESPN's own week number/season type on each event), not just schedule_lookback_days. Previously a game stayed on the Recent screen for the whole lookback window, so last week's Monday nighter was still showing alongside this week's games until the day-count cutoff caught up; it now drops off as soon as this week's games start, regardless of schedule_lookback_days."
+    },
     {
       "version": "3.10.5",
       "released": "2026-09-20",

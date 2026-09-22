@@ -2733,17 +2733,23 @@ class DisplayController:
                         self._publish_on_demand_state()
                         continue
 
-                # Check for live priority - don't rotate if current plugin has live content
-                should_rotate = True
-                if active_mode in self.plugin_modes:
-                    plugin_instance = self.plugin_modes[active_mode]
-                    if hasattr(plugin_instance, 'has_live_priority') and hasattr(plugin_instance, 'has_live_content'):
-                        try:
-                            if plugin_instance.has_live_priority() and plugin_instance.has_live_content():
-                                logger.info("Live priority active for %s - staying on current mode", active_mode)
-                                should_rotate = False
-                        except Exception as e:
-                            logger.warning("Error checking live priority for %s: %s", active_mode, e)
+                # Check for live priority - don't rotate away from the live
+                # mode itself while it still has live content. Checking
+                # plugin_instance.has_live_priority()/has_live_content() alone
+                # is plugin-wide, not mode-specific: football-scoreboard, for
+                # instance, reports both True whenever any of its leagues is
+                # live regardless of which of its modes (nfl_recent,
+                # nfl_upcoming, nfl_live) is on screen. If the plugin's live
+                # mode is disabled (show_live: false) or otherwise not
+                # registered, _collect_live_modes() correctly finds nothing to
+                # switch to -- but the old check here didn't consult that, so
+                # it froze rotation on whatever non-live mode happened to be
+                # showing (e.g. nfl_recent replaying forever) instead of
+                # advancing to nfl_upcoming. Only hold the rotation when
+                # active_mode is itself one of the currently-live modes.
+                should_rotate = active_mode not in self._collect_live_modes()
+                if not should_rotate:
+                    logger.info("Live priority active for %s - staying on current mode", active_mode)
                 
                 if should_rotate and self.available_modes:
                     self.current_mode_index = (self.current_mode_index + 1) % len(self.available_modes)

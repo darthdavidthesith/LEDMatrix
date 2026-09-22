@@ -3001,6 +3001,13 @@ class SportsUpcoming(SportsCore):
 class SportsRecent(SportsRecentSharedMixin, SportsCore):
     SKIN_MODE = "recent"
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Recent games have their own odds toggle -- ESPN keeps a closing line
+        # around after a game goes final, so "show odds on upcoming only"
+        # needs this to stop that fetch/draw too, not just re-use show_odds.
+        self.show_odds: bool = self.mode_config.get("show_recent_odds", self.show_odds)
+
     def _select_recent_games_for_display(
         self, processed_games: List[Dict], favorite_teams: List[str]
     ) -> List[Dict]:

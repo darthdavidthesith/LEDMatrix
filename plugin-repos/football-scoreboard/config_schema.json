@@ -632,7 +632,13 @@
               "x-advanced": true,
               "type": "boolean",
               "default": true,
-              "description": "Show betting odds"
+              "description": "Show betting odds on upcoming (and live) games"
+            },
+            "show_recent_odds": {
+              "x-advanced": true,
+              "type": "boolean",
+              "default": true,
+              "description": "Show betting odds on recent/final games. Independent of show_odds -- set to false to keep odds on upcoming games only."
             }
           }
         },
@@ -1121,7 +1127,13 @@
               "x-advanced": true,
               "type": "boolean",
               "default": true,
-              "description": "Show betting odds"
+              "description": "Show betting odds on upcoming (and live) games"
+            },
+            "show_recent_odds": {
+              "x-advanced": true,
+              "type": "boolean",
+              "default": true,
+              "description": "Show betting odds on recent/final games. Independent of show_odds -- set to false to keep odds on upcoming games only."
             }
           }
         },

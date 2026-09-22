@@ -723,6 +723,7 @@ class FootballScoreboardPlugin(BasePlugin if BasePlugin else object):
                 "show_records": display_options.get("show_records", False),
                 "show_ranking": display_options.get("show_ranking", False),
                 "show_odds": display_options.get("show_odds", False),
+                "show_recent_odds": display_options.get("show_recent_odds", True),
                 "update_interval_seconds": league_config.get(
                     "update_interval_seconds", 300
                 ),

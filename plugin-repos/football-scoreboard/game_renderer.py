@@ -907,7 +907,8 @@ class GameRenderer(SportsGameRendererMixin):
         
         # Get display options for this game's league
         game_league = game.get("league", "nfl")
-        show_odds = self._get_display_option(game_league, "show_odds")
+        odds_option = "show_recent_odds" if game_type == "recent" else "show_odds"
+        show_odds = self._get_display_option(game_league, odds_option)
         show_records = self._get_display_option(game_league, "show_records")
         show_ranking = self._get_display_option(game_league, "show_ranking")
         
@@ -1377,7 +1378,8 @@ class GameRenderer(SportsGameRendererMixin):
                                                   regs, 'date')
 
         game_league = game.get("league", "nfl")
-        if self._get_display_option(game_league, "show_odds") and game.get('odds'):
+        odds_option = "show_recent_odds" if game_type == "recent" else "show_odds"
+        if self._get_display_option(game_league, odds_option) and game.get('odds'):
             self._draw_dynamic_odds(
                 draw_overlay, game['odds'],
                 centre_text=self._centre_row_text(game, game_type), game=game)

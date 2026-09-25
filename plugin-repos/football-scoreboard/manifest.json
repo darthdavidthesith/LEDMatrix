@@ -1,7 +1,7 @@
 {
   "id": "football-scoreboard",
   "name": "Football Scoreboard",
-  "version": "3.10.7",
+  "version": "3.10.8",
   "update_interval": 60,
   "author": "ChuckBuilds",
   "class_name": "FootballScoreboardPlugin",
@@ -25,6 +25,12 @@
     "ncaa_fb_live"
   ],
   "versions": [
+    {
+      "version": "3.10.8",
+      "released": "2026-09-25",
+      "ledmatrix_min_version": "3.4.0",
+      "notes": "Live priority and the live display now require at least two simultaneous valid games per league. A lone primetime NFL game no longer takes over the scoreboard or appears during normal rotation; recent and upcoming modes continue rotating instead."
+    },
     {
       "version": "3.10.7",
       "released": "2026-09-21",

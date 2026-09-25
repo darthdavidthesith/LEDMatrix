@@ -2654,16 +2654,20 @@ class FootballScoreboardPlugin(BasePlugin if BasePlugin else object):
                                 f"home_in_favorites={home_match}, away_in_favorites={away_match}"
                             )
 
-                        nfl_live = any(
+                        nfl_live = len(live_games) > 1 and any(
                             game.get("home_abbr") in favorite_teams
                             or game.get("away_abbr") in favorite_teams
                             for game in live_games
                         )
                         self.logger.debug(f"[LIVE_PRIORITY_DEBUG] NFL favorite team match result: {nfl_live}")
                     else:
-                        # No favorite teams configured, return True if any live games exist
-                        nfl_live = True
-                        self.logger.debug("[LIVE_PRIORITY_DEBUG] NFL no favorites configured, nfl_live=True")
+                        # A lone primetime game should not take over the board.
+                        nfl_live = len(live_games) > 1
+                        self.logger.debug(
+                            "[LIVE_PRIORITY_DEBUG] NFL live priority=%s (%d live games)",
+                            nfl_live,
+                            len(live_games),
+                        )
 
                     league_counts["NFL"] = len(live_games)
                 else:
@@ -2737,16 +2741,19 @@ class FootballScoreboardPlugin(BasePlugin if BasePlugin else object):
                                 f"home_in_favorites={home_match}, away_in_favorites={away_match}"
                             )
 
-                        ncaa_live = any(
+                        ncaa_live = len(live_games) > 1 and any(
                             game.get("home_abbr") in favorite_teams
                             or game.get("away_abbr") in favorite_teams
                             for game in live_games
                         )
                         self.logger.debug(f"[LIVE_PRIORITY_DEBUG] NCAA FB favorite team match result: {ncaa_live}")
                     else:
-                        # No favorite teams configured, return True if any live games exist
-                        ncaa_live = True
-                        self.logger.debug("[LIVE_PRIORITY_DEBUG] NCAA FB no favorites configured, ncaa_live=True")
+                        ncaa_live = len(live_games) > 1
+                        self.logger.debug(
+                            "[LIVE_PRIORITY_DEBUG] NCAA FB live priority=%s (%d live games)",
+                            ncaa_live,
+                            len(live_games),
+                        )
 
                     league_counts["NCAA FB"] = len(live_games)
                 else:
@@ -2820,15 +2827,14 @@ class FootballScoreboardPlugin(BasePlugin if BasePlugin else object):
                 if live_games:
                     # If favorite teams are configured, only return if there are live games for favorite teams
                     favorite_teams = getattr(self.nfl_live, "favorite_teams", [])
-                    if favorite_teams:
+                    if favorite_teams and len(live_games) > 1:
                         if any(
                             game.get("home_abbr") in favorite_teams
                             or game.get("away_abbr") in favorite_teams
                             for game in live_games
                         ):
                             live_modes.append("nfl_live")
-                    else:
-                        # No favorite teams configured, include if any live games exist
+                    elif len(live_games) > 1:
                         live_modes.append("nfl_live")
         
         # Check NCAA FB live content
@@ -2856,15 +2862,14 @@ class FootballScoreboardPlugin(BasePlugin if BasePlugin else object):
                 if live_games:
                     # If favorite teams are configured, only return if there are live games for favorite teams
                     favorite_teams = getattr(self.ncaa_fb_live, "favorite_teams", [])
-                    if favorite_teams:
+                    if favorite_teams and len(live_games) > 1:
                         if any(
                             game.get("home_abbr") in favorite_teams
                             or game.get("away_abbr") in favorite_teams
                             for game in live_games
                         ):
                             live_modes.append("ncaa_fb_live")
-                    else:
-                        # No favorite teams configured, include if any live games exist
+                    elif len(live_games) > 1:
                         live_modes.append("ncaa_fb_live")
 
         # A celebration and live games for the same league can both append it.
